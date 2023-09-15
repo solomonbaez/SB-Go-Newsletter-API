@@ -1,18 +1,13 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
 func main() {
 	router := gin.Default()
 
-	router.GET("/health", HealthCheck)
+	router.GET("/health", handlers.HealthCheck)
 	router.Run(":8000")
-}
-
-func HealthCheck(c *gin.Context) {
-	c.JSON(http.StatusOK, "OK")
 }
