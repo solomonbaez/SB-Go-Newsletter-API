@@ -10,10 +10,11 @@ import (
 )
 
 func TestHealthCheck(t *testing.T) {
+	// router
 	router := gin.Default()
-
 	router.GET("/health", handlers.HealthCheck)
 
+	// recorder
 	recorder := httptest.NewRecorder()
 	request, e := http.NewRequest("GET", "/health", nil)
 	if e != nil {
@@ -22,6 +23,7 @@ func TestHealthCheck(t *testing.T) {
 
 	router.ServeHTTP(recorder, request)
 
+	// tests
 	if status := recorder.Code; status != http.StatusOK {
 		t.Errorf("Expected status code %d, but got %d", http.StatusOK, status)
 	}
