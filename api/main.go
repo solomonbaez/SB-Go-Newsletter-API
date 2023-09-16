@@ -17,6 +17,8 @@ func main() {
 	// router
 	router := gin.Default()
 	router.GET("/health", handlers.HealthCheck)
+	router.GET("/subscribers", handlers.GetSubscribers)
+	router.POST("/subscribe", handlers.Subscribe)
 
 	// listener
 	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", dev_port))

@@ -1,6 +1,6 @@
-package subscriber
+package models
 
-type Subscriber (
-	Email		string `json:"email"`
-	Name		string `json:"name"`
-)
+type Subscriber struct {
+	Email string `json:"email"`
+	Name  string `json:"name"`
+}
