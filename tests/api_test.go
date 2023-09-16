@@ -14,6 +14,7 @@ var router *gin.Engine
 func init() {
 	router = gin.Default()
 	router.GET("/health", handlers.HealthCheck)
+	router.GET("/subscribers", handlers.GetSubscribers)
 }
 
 type App struct {
@@ -42,11 +43,35 @@ func TestHealthCheckReturnsOK(t *testing.T) {
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
-		t.Errorf("Expected status code %d, but got %d", http.StatusOK, status)
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
 	}
 
-	expectedBody := `"OK"`
-	if app.recorder.Body.String() != expectedBody {
-		t.Errorf("Expected body %s, but got %s", expectedBody, app.recorder.Body.String())
+	expected_body := `"OK"`
+	response_body := app.recorder.Body.String()
+
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+	}
+}
+
+func TestGetSubscribers(t *testing.T) {
+	// server initialization
+	request, e := http.NewRequest("GET", "/subscribers", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	app := spawn_app(request)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusOK {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
+
+	expected_body := `"No subscribers"`
+	response_body := app.recorder.Body.String()
+
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
 	}
 }

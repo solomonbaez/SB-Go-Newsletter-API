@@ -53,7 +53,14 @@ func Subscribe(c *gin.Context) {
 }
 
 func GetSubscribers(c *gin.Context) {
-	c.JSON(http.StatusOK, subscribers)
+	if len(subscribers) > 0 {
+		c.JSON(http.StatusOK, subscribers)
+	} else {
+		response := "No subscribers"
+		logger.Info(response)
+
+		c.JSON(http.StatusOK, response)
+	}
 }
 
 func HealthCheck(c *gin.Context) {
