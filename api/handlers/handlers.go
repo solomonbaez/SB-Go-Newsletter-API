@@ -11,6 +11,13 @@ var subscribers = make(map[string]models.Subscriber)
 
 func Subscribe(c *gin.Context) {
 	var subscriber models.Subscriber
+
+	_, e := subscribers[subscriber.Email]
+	if e {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already associated with a subscriber"})
+		return
+	}
+
 	if e := c.ShouldBindJSON(&subscriber); e != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Could not subscribe: " + e.Error()})
 	}
