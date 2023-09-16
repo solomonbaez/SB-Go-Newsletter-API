@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,14 +13,16 @@ var subscribers = make(map[string]models.Subscriber)
 func Subscribe(c *gin.Context) {
 	var subscriber models.Subscriber
 
-	_, e := subscribers[subscriber.Email]
-	if e {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already associated with a subscriber"})
-		return
-	}
-
 	if e := c.ShouldBindJSON(&subscriber); e != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Could not subscribe: " + e.Error()})
+	}
+
+	_, e := subscribers[subscriber.Email]
+	fmt.Printf("%v", e)
+	if e {
+		fmt.Printf("Cannot subscribe")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already associated with a subscriber"})
+		return
 	}
 
 	subscribers[subscriber.Email] = subscriber
