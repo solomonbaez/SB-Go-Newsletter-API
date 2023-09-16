@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/logger"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
@@ -23,19 +25,30 @@ func Subscribe(c *gin.Context) {
 	}
 
 	if _, e := subscribers[subscriber.Email]; e {
-		c.JSON(http.StatusFound, gin.H{"error": "Email already associated with a subscriber"})
+		response := "Email already associated with a subscriber"
+		logger.Error(response)
+
+		c.JSON(http.StatusFound, gin.H{"error": response})
 		return
 
 	} else if len(subscriber.Email) > MaxEmailLen {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Email exceeds the maximum limit of 100 characters"})
+		response := "Email exceeds the maximum limit of 100 characters"
+		logger.Error(response)
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": response})
 		return
 
 	} else if len(subscriber.Name) > MaxNameLen {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Name exceeds the maximum length of 100 characters"})
+		response := "Name exceeds the maximum limit of 100 characters"
+		logger.Error(response)
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": response})
 		return
 	}
 
 	subscribers[subscriber.Email] = subscriber
+	logger.Info(fmt.Sprintf("%v subscribed!", subscriber.Email))
+
 	c.JSON(http.StatusCreated, subscriber)
 }
 
