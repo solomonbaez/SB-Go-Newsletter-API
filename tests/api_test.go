@@ -9,6 +9,13 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
+var router *gin.Engine
+
+func init() {
+	router = gin.Default()
+	router.GET("/health", handlers.HealthCheck)
+}
+
 type App struct {
 	recorder *httptest.ResponseRecorder
 	router   *gin.Engine
@@ -16,18 +23,12 @@ type App struct {
 
 func spawn_app(request *http.Request) App {
 	recorder := httptest.NewRecorder()
-
-	router := gin.Default()
-	router.GET("/health", handlers.HealthCheck)
 	router.ServeHTTP(recorder, request)
 
-	var new_app App
-	new_app = App{
+	return App{
 		recorder,
 		router,
 	}
-
-	return new_app
 }
 
 func TestHealthCheckReturnsOK(t *testing.T) {
@@ -37,8 +38,7 @@ func TestHealthCheckReturnsOK(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	var app App
-	app = spawn_app(request)
+	app := spawn_app(request)
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
