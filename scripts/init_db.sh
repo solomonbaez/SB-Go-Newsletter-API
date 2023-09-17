@@ -1,9 +1,18 @@
 set -x
 set -eo pipefail
 
+# dependencies
 if ! [ -x "$(command -v psql)" ]; then
     echo >&2 "ERROR: psql is not installed"
     exit 1
+fi
+
+if ! [ -x "${command -v migrate}"]; then
+    echo >&2 "INFO: Go migrate is not installed - installing"
+
+    go install \
+        -tags 'postgres' \
+        github.com/golang-migrate/migrate/v4/cmd/migrate@latest \
 fi
 
 # configurations
@@ -40,5 +49,6 @@ migrate create -ext sql -dir ./db/migrations -seq create_subscriptions_table
 
 >&2 echo "Success! Postgres is running on port ${DB_PORT}!"
 
+# environment
 DB_URL=postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 export DATABASE_URL
