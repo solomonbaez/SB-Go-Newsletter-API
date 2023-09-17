@@ -13,9 +13,14 @@ DB_NAME="${POSTGRES_NAME:=newsletter}"
 DB_PORT="${POSTGRES_PORT:=5432}"
 DB_HOST="${POSTGRES_HOST:=localhost}"
 
-# # DEV - remove test container
-# docker stop newsletter
-# docker rm newsletter
+MIGRATIONS_DIR="./db/migrations"
+if [ ! -d "${MIGRATIONS_DIR}" ]; then
+    mkdir -p "${MIGRATIONS_DIR}"
+fi
+
+# DEV - remove test container
+docker stop newsletter
+docker rm newsletter
 
 docker run \
     --name newsletter \
@@ -30,6 +35,8 @@ until psql -h "${DB_HOST}" -U "${DB_USER}" -p "${DB_PORT}" -d "postgres" -c '\q'
     >&2 echo "Postgres is still unavailable - sleeping"
     sleep 1
 done
+
+migrate create -ext sql -dir ./db/migrations -seq create_subscriptions_table
 
 >&2 echo "Success! Postgres is running on port ${DB_PORT}!"
 
