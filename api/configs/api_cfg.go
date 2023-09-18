@@ -29,11 +29,11 @@ func (db DBSettings) connection_string() string {
 }
 
 type AppSettings struct {
-	database DBSettings
-	port     uint16
+	Database DBSettings
+	Port     uint16
 }
 
-func ConfigureApp() AppSettings {
+func ConfigureApp() (DBSettings, uint16) {
 	database := DBSettings{
 		DB_USER,
 		DB_PASS,
@@ -42,10 +42,7 @@ func ConfigureApp() AppSettings {
 		DB_NAME,
 	}
 
-	settings := AppSettings{
-		database,
-		APP_PORT,
-	}
+	port := uint16(APP_PORT)
 
-	return settings
+	return database, port
 }

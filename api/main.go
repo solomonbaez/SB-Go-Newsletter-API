@@ -6,13 +6,23 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/logger"
 )
 
-// set dev port
-const dev_port = 8000
+// generate application settings
+var cfg configs.AppSettings
 
+func init() {
+	database, port := configs.ConfigureApp()
+	cfg = configs.AppSettings{
+		Database: database,
+		Port:     port,
+	}
+}
+
+// server
 func main() {
 	// router
 	router := gin.Default()
@@ -21,7 +31,7 @@ func main() {
 	router.POST("/subscribe", handlers.Subscribe)
 
 	// listener
-	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", dev_port))
+	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", cfg.Port))
 	if e != nil {
 
 		listener, e = net.Listen("tcp", "localhost:0")
