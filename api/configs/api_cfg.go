@@ -14,17 +14,17 @@ const (
 )
 
 type DBSettings struct {
-	user string
-	pass string
-	host string
-	port uint16
-	name string
+	User string
+	Pass string
+	Host string
+	Port uint16
+	Name string
 }
 
-func (db DBSettings) connection_string() string {
+func (db DBSettings) Connection_String() string {
 	return fmt.Sprintf(
 		"postgres://%v:%v@%v:%v/%v",
-		db.user, db.pass, db.host, db.port, db.name,
+		db.User, db.Pass, db.Host, db.Port, db.Name,
 	)
 }
 
