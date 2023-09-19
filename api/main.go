@@ -6,10 +6,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	// "github.com/solomonbaez/SB-Go-Newsletter-API/api/logger"
-	"github.com/rs/zerolog/log"
 )
 
 // generate application settings
