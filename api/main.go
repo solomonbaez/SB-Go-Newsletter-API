@@ -8,7 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/logger"
+	// "github.com/solomonbaez/SB-Go-Newsletter-API/api/logger"
+	"github.com/rs/zerolog/log"
 )
 
 // generate application settings
@@ -36,7 +37,9 @@ func main() {
 
 		listener, e = net.Listen("tcp", "localhost:0")
 		if e != nil {
-			logger.Fatal(e.Error() + " - could not bind listener")
+			log.Fatal().
+				Msg(fmt.Sprintf("ERROR: %v - could not bind listener", e.Error()))
+
 			return
 		}
 
@@ -45,7 +48,8 @@ func main() {
 	defer listener.Close()
 
 	addr := listener.Addr().(*net.TCPAddr)
-	logger.Info(fmt.Sprintf("Listening on port %d\n", addr.Port))
+	log.Info().
+		Msg(fmt.Sprintf("Listening on port %d\n", addr.Port))
 
 	// server
 	server := &http.Server{
@@ -54,7 +58,8 @@ func main() {
 
 	e = server.Serve(listener)
 	if e != nil {
-		logger.Fatal(e.Error() + " - could not start server")
+		log.Fatal().
+			Msg(fmt.Sprintf("ERROR: %v - could not start server", e.Error()))
 		return
 	}
 }
