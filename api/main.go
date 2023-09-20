@@ -28,21 +28,14 @@ var db *pgx.Conn
 
 // server
 func main() {
+	// initialize database
 	var e error
-	db, e = pgx.Connect(context.Background(), cfg.Database.Connection_String())
+	db, e = intialize_database(context.Background())
 	if e != nil {
 		log.Fatal().
 			Err(e).
 			Msg("Failed to connect to postgres")
 
-		return
-	}
-	if e = db.Ping(context.Background()); e != nil {
-		log.Fatal().
-			Err(e).
-			Msg("Failed to connect to postgres")
-
-		db.Close(context.Background())
 		return
 	}
 
@@ -51,6 +44,50 @@ func main() {
 
 	defer db.Close(context.Background())
 
+	// initialize server components
+	router, listener, e := initialize_server()
+	if e != nil {
+		log.Fatal().
+			Err(e).
+			Msg("Could not initialize server")
+	}
+
+	defer listener.Close()
+
+	addr := listener.Addr().(*net.TCPAddr)
+	log.Info().
+		Int("port", addr.Port).
+		Msg(fmt.Sprintf("Listening: http://%v:%d", "localhost", addr.Port))
+
+	// server
+	server := &http.Server{
+		Handler: router,
+	}
+
+	e = server.Serve(listener)
+	if e != nil {
+		log.Fatal().
+			Err(e).
+			Msg("Could not start server")
+
+		return
+	}
+}
+
+func intialize_database(c context.Context) (*pgx.Conn, error) {
+	db, e := pgx.Connect(c, cfg.Database.Connection_String())
+	if e != nil {
+		return nil, e
+	}
+	if e = db.Ping(context.Background()); e != nil {
+		db.Close(c)
+		return nil, e
+	}
+
+	return db, nil
+}
+
+func initialize_server() (*gin.Engine, net.Listener, error) {
 	// router
 	router := gin.Default()
 	router.GET("/health", handlers.HealthCheck)
@@ -66,28 +103,9 @@ func main() {
 				Err(e).
 				Msg("Could not bind listener")
 
-			return
+			return nil, nil, e
 		}
 	}
 
-	defer listener.Close()
-
-	addr := listener.Addr().(*net.TCPAddr)
-	log.Info().
-		Int("port", addr.Port).
-		Msg(fmt.Sprintf("Listening on port %d\n", addr.Port))
-
-	// server
-	server := &http.Server{
-		Handler: router,
-	}
-
-	e = server.Serve(listener)
-	if e != nil {
-		log.Fatal().
-			Err(e).
-			Msg("Could not start server")
-
-		return
-	}
+	return router, listener, nil
 }
