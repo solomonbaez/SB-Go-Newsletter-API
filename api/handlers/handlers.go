@@ -113,36 +113,77 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 	}
 }
 
-func (rh RouteHandler) GetSubscriberByEmail(c *gin.Context) {
-	email := c.Param("email")
-	dummy_subscriber := models.Subscriber{
-		Email: email,
-		Name:  "valid",
+func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
+	id := c.Param("id")
+
+	var subscriber models.Subscriber
+	e := rh.DB.QueryRow(c, "SELECT email, name FROM subscriptions WHERE id=$1", id).Scan(&subscriber.Email, &subscriber.Name)
+	if e != nil {
+		var response string
+		if e == pgx.ErrNoRows {
+			response = "Subscriber not found"
+		} else {
+			response = "Database query error"
+		}
+
+		log.Error().
+			Err(e).
+			Msg(response)
+
+		c.JSON(http.StatusNotFound, gin.H{"error": response})
+		return
 	}
-	if e := ValidateInputs(dummy_subscriber); e != nil {
+
+	c.JSON(http.StatusFound, subscriber)
+}
+
+func (rh RouteHandler) GetSubscriberByEmail(c *gin.Context) {
+	subscriber := models.Subscriber{
+		Email: "",
+		Name:  "",
+	}
+	if e := c.ShouldBindJSON(&subscriber); e != nil {
+		response := "Invalid request"
+		log.Error().
+			Err(e).
+			Msg(response)
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": response + ", " + e.Error()})
+		return
+	}
+
+	if e := ValidateInputs(subscriber); e != nil {
 		response := "Failed to validate email"
 		log.Error().
 			Err(e).
 			Msg(response)
 
 		c.JSON(http.StatusBadRequest, gin.H{"error": response + ", " + e.Error()})
-	}
-
-	var name string
-	e := rh.DB.QueryRow(c, "SELECT name FROM subscriptions WHERE email=$1", email)
-	if e != nil {
-		response := "Email does not exist"
-		log.Error().
-			Msg(response)
-
-		c.JSON(http.StatusBadRequest, gin.H{"error": response})
 		return
 	}
 
-	subscriber := models.Subscriber{
-		Email: email,
-		Name:  name,
+	var name string
+	e := rh.DB.QueryRow(c, "SELECT name FROM subscriptions WHERE email=$1", subscriber.Email).Scan(&name)
+	if e != nil {
+		if e == pgx.ErrNoRows {
+			response := "Email does not exist"
+			log.Error().
+				Err(e).
+				Msg(response)
+
+			c.JSON(http.StatusNotFound, gin.H{"error": "Email not found"})
+			return
+		}
+
+		response := "Database query error"
+		log.Error().
+			Msg(response)
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": response})
+		return
 	}
+
+	subscriber.Name = name
 
 	c.JSON(http.StatusOK, subscriber)
 }
@@ -177,6 +218,7 @@ func BuildSubscriber(row pgx.CollectableRow) (models.Subscriber, error) {
 
 	e := row.Scan(&id, &email, &name, &created)
 	s := models.Subscriber{
+		ID:    id,
 		Email: email,
 		Name:  name,
 	}
