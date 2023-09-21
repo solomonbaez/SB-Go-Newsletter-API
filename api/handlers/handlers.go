@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -8,15 +9,21 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
-type RouteHandler struct {
-	DB *pgx.Conn
+type Database interface {
+	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
 }
 
-func NewRouteHandler(db *pgx.Conn) *RouteHandler {
+type RouteHandler struct {
+	DB Database
+}
+
+func NewRouteHandler(db Database) *RouteHandler {
 	return &RouteHandler{
 		DB: db,
 	}
@@ -40,7 +47,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": response + e.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": response + ", " + e.Error()})
 		return
 	}
 
@@ -52,7 +59,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": response + e.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": response + ", " + e.Error()})
 		return
 	}
 
@@ -72,9 +79,10 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": response + e.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": response + ", " + e.Error()})
 		return
 	}
+	defer rows.Close()
 
 	subscribers, e = pgx.CollectRows[models.Subscriber](rows, func(row pgx.CollectableRow) (models.Subscriber, error) {
 		var id string

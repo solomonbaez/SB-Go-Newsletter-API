@@ -30,7 +30,7 @@ var db *pgx.Conn
 func main() {
 	// initialize database
 	var e error
-	db, e = intialize_database(context.Background())
+	db, e = initialize_database(context.Background())
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -76,7 +76,7 @@ func main() {
 	}
 }
 
-func intialize_database(c context.Context) (*pgx.Conn, error) {
+func initialize_database(c context.Context) (*pgx.Conn, error) {
 	db, e := pgx.Connect(c, cfg.Database.Connection_String())
 	if e != nil {
 		return nil, e
