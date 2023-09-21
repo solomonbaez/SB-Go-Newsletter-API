@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
@@ -24,7 +24,7 @@ func init() {
 	}
 }
 
-var db *pgx.Conn
+var db *pgxpool.Pool
 
 // server
 func main() {
@@ -42,7 +42,7 @@ func main() {
 	log.Info().
 		Msg("Connected to postgres")
 
-	defer db.Close(context.Background())
+	defer db.Close()
 
 	// initialize server components
 	rh := handlers.NewRouteHandler(db)
@@ -76,13 +76,13 @@ func main() {
 	}
 }
 
-func initialize_database(c context.Context) (*pgx.Conn, error) {
-	db, e := pgx.Connect(c, cfg.Database.Connection_String())
+func initialize_database(c context.Context) (*pgxpool.Pool, error) {
+	db, e := pgxpool.New(c, cfg.Database.Connection_String())
 	if e != nil {
 		return nil, e
 	}
 	if e = db.Ping(context.Background()); e != nil {
-		db.Close(c)
+		db.Close()
 		return nil, e
 	}
 

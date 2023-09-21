@@ -10,15 +10,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
 type RouteHandler struct {
-	DB *pgx.Conn
+	DB *pgxpool.Pool
 }
 
-func NewRouteHandler(db *pgx.Conn) *RouteHandler {
+func NewRouteHandler(db *pgxpool.Pool) *RouteHandler {
 	return &RouteHandler{
 		DB: db,
 	}
