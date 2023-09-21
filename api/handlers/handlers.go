@@ -5,9 +5,20 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
+
+type RouteHandler struct {
+	DB *pgx.Conn
+}
+
+func NewRouteHandler(db *pgx.Conn) *RouteHandler {
+	return &RouteHandler{
+		DB: db,
+	}
+}
 
 const (
 	MaxEmailLen = 100
@@ -16,7 +27,7 @@ const (
 
 var subscribers = make(map[string]models.Subscriber)
 
-func Subscribe(c *gin.Context) {
+func (rh RouteHandler) Subscribe(c *gin.Context) {
 	var subscriber models.Subscriber
 
 	if e := c.ShouldBindJSON(&subscriber); e != nil {
@@ -62,7 +73,7 @@ func Subscribe(c *gin.Context) {
 	c.JSON(http.StatusCreated, subscriber)
 }
 
-func GetSubscribers(c *gin.Context) {
+func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 	if len(subscribers) > 0 {
 		c.JSON(http.StatusOK, subscribers)
 	} else {

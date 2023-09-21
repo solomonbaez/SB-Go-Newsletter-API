@@ -45,7 +45,9 @@ func main() {
 	defer db.Close(context.Background())
 
 	// initialize server components
-	router, listener, e := initialize_server()
+	rh := handlers.NewRouteHandler(db)
+
+	router, listener, e := initialize_server(rh)
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -87,12 +89,12 @@ func intialize_database(c context.Context) (*pgx.Conn, error) {
 	return db, nil
 }
 
-func initialize_server() (*gin.Engine, net.Listener, error) {
+func initialize_server(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, error) {
 	// router
 	router := gin.Default()
 	router.GET("/health", handlers.HealthCheck)
-	router.GET("/subscribers", handlers.GetSubscribers)
-	router.POST("/subscribe", handlers.Subscribe)
+	router.GET("/subscribers", rh.GetSubscribers)
+	router.POST("/subscribe", rh.Subscribe)
 
 	// listener
 	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", cfg.Port))
