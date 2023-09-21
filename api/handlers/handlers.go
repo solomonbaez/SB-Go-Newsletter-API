@@ -138,7 +138,7 @@ func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 		Msg("Valid ID format")
 
 	var subscriber models.Subscriber
-	e = rh.DB.QueryRow(c, fmt.Sprintf("SELECT id, email, name FROM subscriptions WHERE id=%v", id)).Scan(&subscriber.ID, &subscriber.Email, &subscriber.Name)
+	e = rh.DB.QueryRow(c, "SELECT id, email, name FROM subscriptions WHERE id=$1", id).Scan(&subscriber.ID, &subscriber.Email, &subscriber.Name)
 	if e != nil {
 		var response string
 		if e == pgx.ErrNoRows {

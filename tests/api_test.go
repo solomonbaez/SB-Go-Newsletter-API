@@ -142,10 +142,12 @@ func TestGetSubscribersByID(t *testing.T) {
 	}
 
 	// Set up expectation for the SELECT query
-	db.ExpectQuery(fmt.Sprintf(`SELECT id, email, name FROM subscriptions WHERE id=%v`, mock_id)).WillReturnRows(
-		pgxmock.NewRows([]string{"id", "email", "name"}).
-			AddRow(mock_id, "test@test.com", "Test User"),
-	)
+	db.ExpectQuery(`SELECT id, email, name FROM subscriptions WHERE`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "email", "name"}).
+				AddRow(mock_id, "test@test.com", "Test User"),
+		)
 
 	app := spawn_app(router, request)
 
