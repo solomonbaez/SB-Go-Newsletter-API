@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -33,6 +34,10 @@ func NewRouteHandler(db Database) *RouteHandler {
 const (
 	MaxEmailLen = 100
 	MaxNameLen  = 100
+)
+
+var (
+	EmailRegex = regexp.MustCompile((`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`))
 )
 
 func (rh RouteHandler) Subscribe(c *gin.Context) {
@@ -140,6 +145,10 @@ func ValidateInputs(s models.Subscriber) error {
 	} else if len(s.Name) > MaxNameLen {
 		return errors.New(
 			fmt.Sprintf("Name exceeds maximum lenght of: %d characters", MaxNameLen),
+		)
+	} else if !EmailRegex.MatchString(s.Email) {
+		return errors.New(
+			fmt.Sprintf("Invalid email format"),
 		)
 	}
 
