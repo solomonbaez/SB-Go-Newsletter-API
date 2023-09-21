@@ -3,6 +3,7 @@ package api_test
 import (
 	"net/http"
 	"net/http/httptest"
+
 	// "strings"
 	"testing"
 
@@ -81,8 +82,9 @@ func TestGetSubscribersNoSubscribers(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	mock_db.ExpectQuery("SELECT * FROM subscriptions")
-
+	mock_db.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
+		pgxmock.NewRows([]string{"id", "email", "name", "created"}),
+	)
 	app := spawn_app(request)
 
 	// tests
