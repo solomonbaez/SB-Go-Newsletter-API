@@ -40,7 +40,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Could not subscribe: " + e.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": response + e.Error()})
 		return
 	}
 
@@ -52,7 +52,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusInternalServerError, response+", "+e.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": response + e.Error()})
 		return
 	}
 
@@ -72,7 +72,7 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusInternalServerError, response+" "+e.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": response + e.Error()})
 		return
 	}
 
