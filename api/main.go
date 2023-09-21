@@ -95,7 +95,6 @@ func initialize_server(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, er
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/subscribers", rh.GetSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
-	router.POST("/subscriber", rh.GetSubscriberByEmail)
 	router.POST("/subscribe", rh.Subscribe)
 
 	// listener

@@ -114,10 +114,24 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 }
 
 func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
-	id := c.Param("id")
+	// Validate UUID
+	u := c.Param("id")
+	id, e := uuid.Parse(u)
+	if e != nil {
+		response := "Invalid ID format"
+		log.Error().
+			Err(e).
+			Msg(response)
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": response + ", " + e.Error()})
+		return
+	}
+
+	log.Info().
+		Msg("Valid ID format")
 
 	var subscriber models.Subscriber
-	e := rh.DB.QueryRow(c, "SELECT email, name FROM subscriptions WHERE id=$1", id).Scan(&subscriber.Email, &subscriber.Name)
+	e = rh.DB.QueryRow(c, "SELECT email, name FROM subscriptions WHERE id=$1", id).Scan(&subscriber.Email, &subscriber.Name)
 	if e != nil {
 		var response string
 		if e == pgx.ErrNoRows {
@@ -135,57 +149,6 @@ func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusFound, subscriber)
-}
-
-func (rh RouteHandler) GetSubscriberByEmail(c *gin.Context) {
-	subscriber := models.Subscriber{
-		Email: "",
-		Name:  "",
-	}
-	if e := c.ShouldBindJSON(&subscriber); e != nil {
-		response := "Invalid request"
-		log.Error().
-			Err(e).
-			Msg(response)
-
-		c.JSON(http.StatusBadRequest, gin.H{"error": response + ", " + e.Error()})
-		return
-	}
-
-	if e := ValidateInputs(subscriber); e != nil {
-		response := "Failed to validate email"
-		log.Error().
-			Err(e).
-			Msg(response)
-
-		c.JSON(http.StatusBadRequest, gin.H{"error": response + ", " + e.Error()})
-		return
-	}
-
-	var name string
-	e := rh.DB.QueryRow(c, "SELECT name FROM subscriptions WHERE email=$1", subscriber.Email).Scan(&name)
-	if e != nil {
-		if e == pgx.ErrNoRows {
-			response := "Email does not exist"
-			log.Error().
-				Err(e).
-				Msg(response)
-
-			c.JSON(http.StatusNotFound, gin.H{"error": "Email not found"})
-			return
-		}
-
-		response := "Database query error"
-		log.Error().
-			Msg(response)
-
-		c.JSON(http.StatusInternalServerError, gin.H{"error": response})
-		return
-	}
-
-	subscriber.Name = name
-
-	c.JSON(http.StatusOK, subscriber)
 }
 
 func HealthCheck(c *gin.Context) {
