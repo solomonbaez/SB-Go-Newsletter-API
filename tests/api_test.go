@@ -4,27 +4,20 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	// "strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pashagolub/pgxmock/v3"
-	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
 var router *gin.Engine
+var c *gin.Context
 
 func init() {
 	router = gin.Default()
 	router.GET("/health", handlers.HealthCheck)
-}
-
-func MockRouter(db pgxmock.PgxConnIface) {
-	rh := handlers.NewRouteHandler(db)
-
-	router.POST("/subscribe", rh.Subscribe)
-	router.GET("/subscribers", rh.GetSubscribers)
 }
 
 type App struct {
@@ -65,16 +58,11 @@ func TestHealthCheckReturnsOK(t *testing.T) {
 }
 
 func TestGetSubscribersNoSubscribers(t *testing.T) {
-	// router initialization
-	mock_db, e := pgxmock.NewConn()
+	db, e := SpawnMockDatabase()
 	if e != nil {
-		log.Fatal().
-			Err(e).
-			Msg("Failed to spawn mock database")
-
-		return
+		t.Fatal(e)
 	}
-	MockRouter(mock_db)
+	defer db.ExpectationsWereMet()
 
 	// server initialization
 	request, e := http.NewRequest("GET", "/subscribers", nil)
@@ -82,7 +70,7 @@ func TestGetSubscribersNoSubscribers(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	mock_db.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
+	db.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
 		pgxmock.NewRows([]string{"id", "email", "name", "created"}),
 	)
 	app := spawn_app(request)
@@ -100,41 +88,65 @@ func TestGetSubscribersNoSubscribers(t *testing.T) {
 	}
 }
 
-// func TestGetSubscribersWithSubscribers(t *testing.T) {
-// 	// server initialization
-// 	data := `{"email": "test@test.com", "name": "test"}`
-// 	post_request, e := http.NewRequest("POST", "/subscribe", strings.NewReader(data))
-// 	if e != nil {
-// 		t.Fatal(e)
-// 	}
+func TestGetSubscribersWithSubscribers(t *testing.T) {
+	db, e := SpawnMockDatabase()
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.ExpectationsWereMet()
 
-// 	app := spawn_app(post_request)
+	request, e := http.NewRequest("GET", "/subscribers", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
 
-// 	//  test POST
-// 	if status := app.recorder.Code; status != http.StatusCreated {
-// 		t.Errorf("Expected status code %v, but got %v", http.StatusCreated, status)
-// 	}
+	// Set up expectation for the SELECT query
+	db.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
+		pgxmock.NewRows([]string{"id", "email", "name", "created"}).
+			AddRow("1", "test@test.com", "Test User", time.Now()),
+	)
 
-// 	// test GET
-// 	t.Run("GetSubscribers", func(t *testing.T) {
-// 		get_request, e := http.NewRequest("GET", "/subscribers", nil)
-// 		if e != nil {
-// 			t.Fatal(e)
-// 		}
+	app := spawn_app(request)
 
-// 		app.recorder = httptest.NewRecorder()
-// 		app.router.ServeHTTP(app.recorder, get_request)
+	if status := app.recorder.Code; status != http.StatusOK {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
 
-// 		// tests
-// 		if status := app.recorder.Code; status != http.StatusOK {
-// 			t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
-// 		}
+	expectedBody := `[{"id":"1","email":"test@test.com","name":"Test User"}]`
+	responseBody := app.recorder.Body.String()
 
-// 		expected_body := `{"email":"test@test.com","name":"test"}`
-// 		response_body := app.recorder.Body.String()
+	if responseBody != expectedBody {
+		t.Errorf("Expected body %v, but got %v", expectedBody, responseBody)
+	}
+}
 
-// 		if response_body != expected_body {
-// 			t.Errorf("Expected body %v, but got %v", expected_body, response_body)
-// 		}
-// 	})
+func SpawnMockDatabase() (pgxmock.PgxConnIface, error) {
+	mock_db, e := pgxmock.NewConn()
+	if e != nil {
+		return nil, e
+	}
+	MockRouter(mock_db)
+	return mock_db, nil
+}
+
+func MockRouter(db pgxmock.PgxConnIface) {
+	rh := handlers.NewRouteHandler(db)
+	router.POST("/subscribe", rh.Subscribe)
+	router.GET("/subscribers", rh.GetSubscribers)
+}
+
+// // POSSIBLE POST TEST
+// db.ExpectExec(`INSERT INTO subscriptions`).WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+// // server initialization
+// data := `{"email": "test@test.com", "name": "Test User"}`
+// postRequest, e := http.NewRequest("POST", "/subscribe", strings.NewReader(data))
+// if e != nil {
+// 	t.Fatal(e)
+// }
+
+// app := spawn_app(postRequest)
+
+// if status := app.recorder.Code; status != http.StatusCreated {
+// 	t.Errorf("Expected status code %v, but got %v", http.StatusCreated, status)
 // }
