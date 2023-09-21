@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -48,6 +49,15 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 			Msg(response)
 
 		c.JSON(http.StatusBadRequest, gin.H{"error": response + ", " + e.Error()})
+		return
+	}
+
+	if e := ValidateInputs(subscriber); e != nil {
+		log.Error().
+			Err(e).
+			Msg(e.Error())
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": e.Error()})
 		return
 	}
 
@@ -120,4 +130,18 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 
 func HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, "OK")
+}
+
+func ValidateInputs(s models.Subscriber) error {
+	if len(s.Email) > MaxEmailLen {
+		return errors.New(
+			fmt.Sprintf("Email exceeds maximum length of: %d characters", MaxEmailLen),
+		)
+	} else if len(s.Name) > MaxNameLen {
+		return errors.New(
+			fmt.Sprintf("Name exceeds maximum lenght of: %d characters", MaxNameLen),
+		)
+	}
+
+	return nil
 }
