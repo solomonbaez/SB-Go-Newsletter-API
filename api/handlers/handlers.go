@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,16 +11,22 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
-type RouteHandler struct {
-	DB *pgxpool.Pool
+type Database interface {
+	Exec(c context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+	Query(c context.Context, sql string, args ...interface{}) (pgx.Rows, error)
+	QueryRow(c context.Context, sql string, args ...interface{}) pgx.Row
 }
 
-func NewRouteHandler(db *pgxpool.Pool) *RouteHandler {
+type RouteHandler struct {
+	DB Database
+}
+
+func NewRouteHandler(db Database) *RouteHandler {
 	return &RouteHandler{
 		DB: db,
 	}
@@ -37,7 +44,6 @@ var (
 func (rh RouteHandler) Subscribe(c *gin.Context) {
 	var subscriber models.Subscriber
 
-	// TESTING
 	id := uuid.NewString()
 	created := time.Now()
 
