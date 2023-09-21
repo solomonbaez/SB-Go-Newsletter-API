@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,21 +10,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
-type Database interface {
-	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
-	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
-}
-
 type RouteHandler struct {
-	DB Database
+	DB *pgx.Conn
 }
 
-func NewRouteHandler(db Database) *RouteHandler {
+func NewRouteHandler(db *pgx.Conn) *RouteHandler {
 	return &RouteHandler{
 		DB: db,
 	}
@@ -99,20 +92,7 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	subscribers, e = pgx.CollectRows[models.Subscriber](rows, func(row pgx.CollectableRow) (models.Subscriber, error) {
-		var id string
-		var email string
-		var name string
-		var created time.Time
-
-		e := row.Scan(&id, &email, &name, &created)
-		s := models.Subscriber{
-			Email: email,
-			Name:  name,
-		}
-
-		return s, e
-	})
+	subscribers, e = pgx.CollectRows[models.Subscriber](rows, BuildSubscriber)
 	if e != nil {
 		response := "Failed to fetch subscribers"
 		log.Error().
@@ -131,6 +111,40 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 
 		c.JSON(http.StatusOK, response)
 	}
+}
+
+func (rh RouteHandler) GetSubscriberByEmail(c *gin.Context) {
+	email := c.Param("email")
+	dummy_subscriber := models.Subscriber{
+		Email: email,
+		Name:  "valid",
+	}
+	if e := ValidateInputs(dummy_subscriber); e != nil {
+		response := "Failed to validate email"
+		log.Error().
+			Err(e).
+			Msg(response)
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": response + ", " + e.Error()})
+	}
+
+	var name string
+	e := rh.DB.QueryRow(c, "SELECT name FROM subscriptions WHERE email=$1", email)
+	if e != nil {
+		response := "Email does not exist"
+		log.Error().
+			Msg(response)
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": response})
+		return
+	}
+
+	subscriber := models.Subscriber{
+		Email: email,
+		Name:  name,
+	}
+
+	c.JSON(http.StatusOK, subscriber)
 }
 
 func HealthCheck(c *gin.Context) {
@@ -153,4 +167,19 @@ func ValidateInputs(s models.Subscriber) error {
 	}
 
 	return nil
+}
+
+func BuildSubscriber(row pgx.CollectableRow) (models.Subscriber, error) {
+	var id string
+	var email string
+	var name string
+	var created time.Time
+
+	e := row.Scan(&id, &email, &name, &created)
+	s := models.Subscriber{
+		Email: email,
+		Name:  name,
+	}
+
+	return s, e
 }
