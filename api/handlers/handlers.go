@@ -43,7 +43,7 @@ var (
 
 func (rh RouteHandler) Subscribe(c *gin.Context) {
 	var subscriber models.Subscriber
-	request_id := uuid.NewString()
+	request_id := c.GetString("request_id")
 
 	id := uuid.NewString()
 	created := time.Now()
@@ -107,7 +107,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 
 func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 	var subscribers []models.Subscriber
-	request_id := uuid.NewString()
+	request_id := c.GetString("request_id")
 
 	log.Info().
 		Str("request_id", request_id).
@@ -150,7 +150,7 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 }
 
 func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
-	request_id := uuid.NewString()
+	request_id := c.GetString("request_id")
 
 	log.Info().
 		Str("request_id", request_id).

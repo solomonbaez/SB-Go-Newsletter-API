@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
@@ -92,6 +93,7 @@ func initialize_database(c context.Context) (*pgxpool.Pool, error) {
 func initialize_server(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, error) {
 	// router
 	router := gin.Default()
+	router.Use(RequestLoggerMiddleware())
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/subscribers", rh.GetSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
@@ -111,4 +113,14 @@ func initialize_server(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, er
 	}
 
 	return router, listener, nil
+}
+
+func RequestLoggerMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		request_id := uuid.NewString()
+		c.Set("request_id", request_id)
+		log.Info().
+			Str("request_id", request_id).
+			Msg(fmt.Sprintf("New %v request...", c.Request.Method))
+	}
 }
