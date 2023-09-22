@@ -35,31 +35,36 @@ func init() {
 }
 
 var db *pgxpool.Pool
+var enable_tracing = false
 
 // server
 func main() {
-	exporter, e := stdouttrace.New(stdouttrace.WithPrettyPrint())
-	if e != nil {
-		log.Fatal().
-			Err(e).
-			Msg("Failed to initialize telemetry")
+	var exporter *stdouttrace.Exporter
+	var e error
+	if enable_tracing {
+		exporter, e = stdouttrace.New(stdouttrace.WithPrettyPrint())
+		if e != nil {
+			log.Fatal().
+				Err(e).
+				Msg("Failed to initialize telemetry")
 
-		return
+			return
+		}
+
+		tp := trace.NewTracerProvider(
+			trace.WithSyncer(exporter),
+			trace.WithSampler(trace.AlwaysSample()),
+			trace.WithResource(resource.NewWithAttributes(
+				semconv.SchemaURL,
+				semconv.ServiceNameKey.String("newsletter"),
+			)),
+		)
+
+		otel.SetTracerProvider(tp)
 	}
 
-	tp := trace.NewTracerProvider(
-		trace.WithSyncer(exporter),
-		trace.WithSampler(trace.AlwaysSample()),
-		trace.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String("newsletter"),
-		)),
-	)
-
-	otel.SetTracerProvider(tp)
-
 	// initialize database
-	db, e = initialize_database(context.Background())
+	db, e := initialize_database(context.Background())
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -121,7 +126,12 @@ func initialize_database(c context.Context) (*pgxpool.Pool, error) {
 func initialize_server(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, error) {
 	// router
 	router := gin.Default()
-	router.Use(TraceMiddleware())
+
+	// dev
+	if enable_tracing {
+		router.Use(TraceMiddleware())
+	}
+
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/subscribers", rh.GetSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
