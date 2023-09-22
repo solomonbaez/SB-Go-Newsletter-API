@@ -33,16 +33,17 @@ func NewRouteHandler(db Database) *RouteHandler {
 }
 
 const (
-	MaxEmailLen = 100
-	MaxNameLen  = 100
+	max_email_length = 100
+	max_name_length  = 100
 )
 
 var (
-	EmailRegex = regexp.MustCompile((`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`))
+	email_regex = regexp.MustCompile((`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`))
 )
 
 func (rh RouteHandler) Subscribe(c *gin.Context) {
 	var subscriber models.Subscriber
+	request_id := uuid.NewString()
 
 	id := uuid.NewString()
 	created := time.Now()
@@ -50,19 +51,21 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	if e := c.ShouldBindJSON(&subscriber); e != nil {
 		response := fmt.Sprintf("Could not subscribe, %v", e.Error())
 		log.Error().
+			Str("ID", request_id).
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": response})
+		c.JSON(http.StatusBadRequest, gin.H{"ID": request_id, "error": response})
 		return
 	}
 
 	if e := ValidateInputs(subscriber); e != nil {
 		log.Error().
+			Str("ID", request_id).
 			Err(e).
 			Msg(e.Error())
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": e.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"ID": request_id, "error": e.Error()})
 		return
 	}
 
@@ -71,18 +74,20 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	if e != nil {
 		response := fmt.Sprintf("Failed to subscribe, %v", e.Error())
 		log.Error().
+			Str("ID", request_id).
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": response})
+		c.JSON(http.StatusInternalServerError, gin.H{"ID": request_id, "error": response})
 		return
 	}
 
 	log.Info().
+		Str("ID", request_id).
 		Str("email", subscriber.Email).
 		Msg(fmt.Sprintf("%v subscribed!", subscriber.Email))
 
-	c.JSON(http.StatusCreated, subscriber)
+	c.JSON(http.StatusCreated, gin.H{"ID": request_id, "subscriber": subscriber})
 }
 
 func (rh RouteHandler) GetSubscribers(c *gin.Context) {
@@ -163,15 +168,15 @@ func HealthCheck(c *gin.Context) {
 }
 
 func ValidateInputs(s models.Subscriber) error {
-	if len(s.Email) > MaxEmailLen {
+	if len(s.Email) > max_email_length {
 		return errors.New(
-			fmt.Sprintf("email exceeds maximum length of: %d characters", MaxEmailLen),
+			fmt.Sprintf("email exceeds maximum length of: %d characters", max_email_length),
 		)
-	} else if len(s.Name) > MaxNameLen {
+	} else if len(s.Name) > max_name_length {
 		return errors.New(
-			fmt.Sprintf("name exceeds maximum lenght of: %d characters", MaxNameLen),
+			fmt.Sprintf("name exceeds maximum lenght of: %d characters", max_name_length),
 		)
-	} else if !EmailRegex.MatchString(s.Email) {
+	} else if !email_regex.MatchString(s.Email) {
 		return errors.New(
 			fmt.Sprintf("invalid email format"),
 		)
