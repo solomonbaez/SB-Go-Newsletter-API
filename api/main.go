@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -160,6 +161,7 @@ func TraceMiddleware() gin.HandlerFunc {
 			)
 
 		ctx, span := otel.Tracer("http-server").Start(span_ctx, c.Request.URL.Path)
+		span.SetAttributes(attribute.String("request_id", request_id))
 		defer span.End()
 
 		c.Request = c.Request.WithContext(ctx)
