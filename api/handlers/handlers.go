@@ -59,6 +59,17 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 		return
 	}
 
+	// correlate request with inputs
+	log.Info().
+		Str("request_id", request_id).
+		Str("email", subscriber.Email).
+		Str("name", subscriber.Name).
+		Msg("")
+
+	log.Info().
+		Str("request_id", request_id).
+		Msg("Validating inputs...")
+
 	if e := ValidateInputs(subscriber); e != nil {
 		log.Error().
 			Str("request_id", request_id).
@@ -68,6 +79,10 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"request_id": request_id, "error": e.Error()})
 		return
 	}
+
+	log.Info().
+		Str("request_id", request_id).
+		Msg("Subscribing...")
 
 	query := "INSERT INTO subscriptions (id, email, name, created) VALUES ($1, $2, $3, $4)"
 	_, e := rh.DB.Exec(c, query, id, subscriber.Email, subscriber.Name, created)
@@ -85,7 +100,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	log.Info().
 		Str("request_id", request_id).
 		Str("email", subscriber.Email).
-		Msg(fmt.Sprintf("%v subscribed!", subscriber.Email))
+		Msg(fmt.Sprintf("Success, %v subscribed!", subscriber.Email))
 
 	c.JSON(http.StatusCreated, gin.H{"request_id": request_id, "subscriber": subscriber})
 }
@@ -93,6 +108,10 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 	var subscribers []models.Subscriber
 	request_id := uuid.NewString()
+
+	log.Info().
+		Str("request_id", request_id).
+		Msg("Fetching subscribers...")
 
 	rows, e := rh.DB.Query(c, "SELECT * FROM subscriptions")
 	if e != nil {
@@ -133,6 +152,10 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 	request_id := uuid.NewString()
 
+	log.Info().
+		Str("request_id", request_id).
+		Msg("Validating ID...")
+
 	// Validate UUID
 	u := c.Param("id")
 	id, e := uuid.Parse(u)
@@ -149,7 +172,7 @@ func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 
 	log.Info().
 		Str("request_id", request_id).
-		Msg("Valid ID format")
+		Msg("Fetching subscriber...")
 
 	var subscriber models.Subscriber
 	e = rh.DB.QueryRow(c, "SELECT id, email, name FROM subscriptions WHERE id=$1", id).Scan(&subscriber.ID, &subscriber.Email, &subscriber.Name)
