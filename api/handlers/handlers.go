@@ -51,21 +51,21 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	if e := c.ShouldBindJSON(&subscriber); e != nil {
 		response := fmt.Sprintf("Could not subscribe, %v", e.Error())
 		log.Error().
-			Str("ID", request_id).
+			Str("request_id", request_id).
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusBadRequest, gin.H{"ID": request_id, "error": response})
+		c.JSON(http.StatusBadRequest, gin.H{"request_id": request_id, "error": response})
 		return
 	}
 
 	if e := ValidateInputs(subscriber); e != nil {
 		log.Error().
-			Str("ID", request_id).
+			Str("request_id", request_id).
 			Err(e).
 			Msg(e.Error())
 
-		c.JSON(http.StatusBadRequest, gin.H{"ID": request_id, "error": e.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"request_id": request_id, "error": e.Error()})
 		return
 	}
 
@@ -74,72 +74,81 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	if e != nil {
 		response := fmt.Sprintf("Failed to subscribe, %v", e.Error())
 		log.Error().
-			Str("ID", request_id).
+			Str("request_id", request_id).
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusInternalServerError, gin.H{"ID": request_id, "error": response})
+		c.JSON(http.StatusInternalServerError, gin.H{"request_id": request_id, "error": response})
 		return
 	}
 
 	log.Info().
-		Str("ID", request_id).
+		Str("request_id", request_id).
 		Str("email", subscriber.Email).
 		Msg(fmt.Sprintf("%v subscribed!", subscriber.Email))
 
-	c.JSON(http.StatusCreated, gin.H{"ID": request_id, "subscriber": subscriber})
+	c.JSON(http.StatusCreated, gin.H{"request_id": request_id, "subscriber": subscriber})
 }
 
 func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 	var subscribers []models.Subscriber
+	request_id := uuid.NewString()
+
 	rows, e := rh.DB.Query(c, "SELECT * FROM subscriptions")
 	if e != nil {
 		response := fmt.Sprintf("Failed to fetch subscribers, %v", e.Error())
 		log.Error().
+			Str("request_id", request_id).
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": response})
+		c.JSON(http.StatusInternalServerError, gin.H{"request_id": request_id, "error": response})
 		return
 	}
 	defer rows.Close()
 
 	subscribers, e = pgx.CollectRows[models.Subscriber](rows, BuildSubscriber)
 	if e != nil {
-		response := "Failed to fetch subscribers"
+		response := fmt.Sprintf("Failed to fetch subscribers, %v", e.Error())
 		log.Error().
+			Str("request_id", request_id).
 			Msg(response)
 
-		c.JSON(http.StatusBadRequest, response)
+		c.JSON(http.StatusBadRequest, gin.H{"request_id": request_id, "error": response})
 		return
 	}
 
 	if len(subscribers) > 0 {
-		c.JSON(http.StatusOK, subscribers)
+		c.JSON(http.StatusOK, gin.H{"request_id": request_id, "subscribers": subscribers})
 	} else {
 		response := "No subscribers"
 		log.Info().
+			Str("request_id", request_id).
 			Msg(response)
 
-		c.JSON(http.StatusOK, response)
+		c.JSON(http.StatusOK, gin.H{"request_id": request_id, "subscribers": response})
 	}
 }
 
 func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
+	request_id := uuid.NewString()
+
 	// Validate UUID
 	u := c.Param("id")
 	id, e := uuid.Parse(u)
 	if e != nil {
 		response := fmt.Sprintf("Invalid ID format, %v", e.Error())
 		log.Error().
+			Str("request_id", request_id).
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": response})
+		c.JSON(http.StatusBadRequest, gin.H{"request_id": request_id, "error": response})
 		return
 	}
 
 	log.Info().
+		Str("request_id", request_id).
 		Msg("Valid ID format")
 
 	var subscriber models.Subscriber
@@ -153,14 +162,15 @@ func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 		}
 
 		log.Error().
+			Str("request_id", request_id).
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusNotFound, gin.H{"error": response})
+		c.JSON(http.StatusNotFound, gin.H{"request_id": request_id, "error": response})
 		return
 	}
 
-	c.JSON(http.StatusFound, subscriber)
+	c.JSON(http.StatusFound, gin.H{"request_id": request_id, "subscriber": subscriber})
 }
 
 func HealthCheck(c *gin.Context) {
