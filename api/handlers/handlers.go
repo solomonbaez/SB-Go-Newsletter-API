@@ -48,12 +48,12 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	created := time.Now()
 
 	if e := c.ShouldBindJSON(&subscriber); e != nil {
-		response := "Could not subscribe"
+		response := fmt.Sprintf("Could not subscribe, %v", e.Error())
 		log.Error().
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": response + ", " + e.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": response})
 		return
 	}
 
@@ -69,12 +69,12 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	query := "INSERT INTO subscriptions (id, email, name, created) VALUES ($1, $2, $3, $4)"
 	_, e := rh.DB.Exec(c, query, id, subscriber.Email, subscriber.Name, created)
 	if e != nil {
-		response := "Failed to subscribe"
+		response := fmt.Sprintf("Failed to subscribe, %v", e.Error())
 		log.Error().
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": response + ", " + e.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": response})
 		return
 	}
 
@@ -89,12 +89,12 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 	var subscribers []models.Subscriber
 	rows, e := rh.DB.Query(c, "SELECT * FROM subscriptions")
 	if e != nil {
-		response := "Failed to fetch subscribers"
+		response := fmt.Sprintf("Failed to fetch subscribers, %v", e.Error())
 		log.Error().
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": response + ", " + e.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": response})
 		return
 	}
 	defer rows.Close()
@@ -125,12 +125,12 @@ func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 	u := c.Param("id")
 	id, e := uuid.Parse(u)
 	if e != nil {
-		response := "Invalid ID format"
+		response := fmt.Sprintf("Invalid ID format, %v", e.Error())
 		log.Error().
 			Err(e).
 			Msg(response)
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": response + ", " + e.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": response})
 		return
 	}
 
@@ -142,7 +142,7 @@ func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 	if e != nil {
 		var response string
 		if e == pgx.ErrNoRows {
-			response = "Subscriber not found"
+			response = fmt.Sprintf("Subscriber not found, %v", e.Error())
 		} else {
 			response = "Database query error"
 		}
@@ -165,15 +165,15 @@ func HealthCheck(c *gin.Context) {
 func ValidateInputs(s models.Subscriber) error {
 	if len(s.Email) > MaxEmailLen {
 		return errors.New(
-			fmt.Sprintf("Email exceeds maximum length of: %d characters", MaxEmailLen),
+			fmt.Sprintf("email exceeds maximum length of: %d characters", MaxEmailLen),
 		)
 	} else if len(s.Name) > MaxNameLen {
 		return errors.New(
-			fmt.Sprintf("Name exceeds maximum lenght of: %d characters", MaxNameLen),
+			fmt.Sprintf("name exceeds maximum lenght of: %d characters", MaxNameLen),
 		)
 	} else if !EmailRegex.MatchString(s.Email) {
 		return errors.New(
-			fmt.Sprintf("Invalid email format"),
+			fmt.Sprintf("invalid email format"),
 		)
 	}
 
