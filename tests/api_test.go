@@ -21,7 +21,7 @@ type app struct {
 	router   *gin.Engine
 }
 
-func TestHealthCheckReturnsOK(t *testing.T) {
+func Test_HealthCheck_Returns_OK(t *testing.T) {
 	// router
 	router := gin.Default()
 	router.GET("/health", handlers.HealthCheck)
@@ -45,7 +45,7 @@ func TestHealthCheckReturnsOK(t *testing.T) {
 	}
 }
 
-func TestGetSubscribersNoSubscribers(t *testing.T) {
+func Test_GetSubscribers_NoSubscribers_Passes(t *testing.T) {
 	// initialize
 	db, e := spawn_mock_database()
 	if e != nil {
@@ -78,7 +78,7 @@ func TestGetSubscribersNoSubscribers(t *testing.T) {
 	}
 }
 
-func TestGetSubscribersWithSubscribers(t *testing.T) {
+func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 	// initialization
 	db, e := spawn_mock_database()
 	if e != nil {
@@ -113,7 +113,7 @@ func TestGetSubscribersWithSubscribers(t *testing.T) {
 	}
 }
 
-func TestGetSubscribersByID(t *testing.T) {
+func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 	// initialization
 	db, e := spawn_mock_database()
 	if e != nil {
@@ -145,6 +145,46 @@ func TestGetSubscribersByID(t *testing.T) {
 	}
 
 	expected_body := fmt.Sprintf(`{"request_id":"","subscriber":{"id":"%v","email":"test@test.com","name":"Test User"}}`, mock_id)
+	response_body := app.recorder.Body.String()
+
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+	}
+}
+
+func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
+	// initialization
+	db, e := spawn_mock_database()
+	if e != nil {
+		t.Fatal(e)
+	}
+	router := spawn_mock_router(db)
+
+	// Non-UUID ID
+	mock_id := "1"
+
+	request, e := http.NewRequest("GET", fmt.Sprintf("/subscribers/%v", mock_id), nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	db.ExpectQuery(`SELECT id, email, name FROM subscriptions WHERE`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "email", "name"}).
+				AddRow(mock_id, "test@test.com", "Test User"),
+		)
+
+	// tests
+	app := spawn_app(router, request)
+	defer db.ExpectationsWereMet()
+	defer db.Close(app.context)
+
+	if status := app.recorder.Code; status != http.StatusBadRequest {
+		t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
+	}
+
+	expected_body := `{"error":"Invalid ID format, invalid UUID length: 1","request_id":""}`
 	response_body := app.recorder.Body.String()
 
 	if response_body != expected_body {
