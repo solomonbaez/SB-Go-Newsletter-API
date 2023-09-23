@@ -192,7 +192,7 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 	}
 }
 
-func TestPostSubscriber(t *testing.T) {
+func Test_Subscribe(t *testing.T) {
 	// initialization
 	db, e := spawn_mock_database()
 	if e != nil {
@@ -223,6 +223,48 @@ func TestPostSubscriber(t *testing.T) {
 	response_body := app.recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+	}
+}
+
+func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
+	// initialization
+	db, e := spawn_mock_database()
+	if e != nil {
+		t.Fatal(e)
+	}
+	router := spawn_mock_router(db)
+
+	var test_cases []string
+	test_cases = append(test_cases,
+		`{"email": "test", "name": "Test User"}`,
+		`{"email": "test@", "name": "Test User"}`,
+		`{"email": "@test.com", "name": "Test User"}`,
+		`{"email": "test.com", "name": "Test User"}`,
+	)
+	for _, tc := range test_cases {
+		request, e := http.NewRequest("POST", "/subscribe", strings.NewReader(tc))
+		if e != nil {
+			t.Fatal(e)
+		}
+
+		db.ExpectExec("INSERT INTO subscriptions").
+			WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg())
+			// WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+		app := spawn_app(router, request)
+		defer db.ExpectationsWereMet()
+		defer db.Close(app.context)
+
+		// tests
+		if status := app.recorder.Code; status != http.StatusBadRequest {
+			t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
+		}
+
+		expected_body := `{"error":"invalid email format","request_id":""}`
+		response_body := app.recorder.Body.String()
+		if response_body != expected_body {
+			t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+		}
 	}
 }
 
