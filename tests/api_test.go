@@ -71,7 +71,7 @@ func TestGetSubscribersNoSubscribers(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
 	}
 
-	expected_body := `"No subscribers"`
+	expected_body := `{"request_id":"","subscribers":"No subscribers"}`
 	response_body := app.recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
@@ -106,10 +106,10 @@ func TestGetSubscribersWithSubscribers(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
 	}
 
-	expectedBody := fmt.Sprintf(`[{"id":"%v","email":"test@test.com","name":"Test User"}]`, mock_id)
-	responseBody := app.recorder.Body.String()
-	if responseBody != expectedBody {
-		t.Errorf("Expected body %v, but got %v", expectedBody, responseBody)
+	expected_body := fmt.Sprintf(`{"request_id":"","subscribers":[{"id":"%v","email":"test@test.com","name":"Test User"}]}`, mock_id)
+	response_body := app.recorder.Body.String()
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
 	}
 }
 
@@ -144,11 +144,11 @@ func TestGetSubscribersByID(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusFound, status)
 	}
 
-	expectedBody := fmt.Sprintf(`{"id":"%v","email":"test@test.com","name":"Test User"}`, mock_id)
-	responseBody := app.recorder.Body.String()
+	expected_body := fmt.Sprintf(`{"request_id":"","subscriber":{"id":"%v","email":"test@test.com","name":"Test User"}}`, mock_id)
+	response_body := app.recorder.Body.String()
 
-	if responseBody != expectedBody {
-		t.Errorf("Expected body %v, but got %v", expectedBody, responseBody)
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
 	}
 }
 
@@ -179,10 +179,10 @@ func TestPostSubscriber(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusCreated, status)
 	}
 
-	expectedBody := `{"id":"","email":"test@test.com","name":"Test User"}`
-	responseBody := app.recorder.Body.String()
-	if responseBody != expectedBody {
-		t.Errorf("Expected body %v, but got %v", expectedBody, responseBody)
+	expected_body := `{"request_id":"","subscriber":{"id":"","email":"test@test.com","name":"Test User"}}`
+	response_body := app.recorder.Body.String()
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
 	}
 }
 
