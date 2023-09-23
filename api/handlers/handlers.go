@@ -70,7 +70,8 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 		Str("request_id", request_id).
 		Msg("Validating inputs...")
 
-	if e := ValidateInputs(subscriber); e != nil {
+	e := ValidateInputs(subscriber)
+	if e != nil {
 		log.Error().
 			Str("request_id", request_id).
 			Err(e).
@@ -85,7 +86,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 		Msg("Subscribing...")
 
 	query := "INSERT INTO subscriptions (id, email, name, created) VALUES ($1, $2, $3, $4)"
-	_, e := rh.DB.Exec(c, query, id, subscriber.Email, subscriber.Name, created)
+	_, e = rh.DB.Exec(c, query, id, subscriber.Email, subscriber.Name, created)
 	if e != nil {
 		response := fmt.Sprintf("Failed to subscribe, %v", e.Error())
 		log.Error().
@@ -207,7 +208,7 @@ func ValidateInputs(s models.Subscriber) error {
 		)
 	} else if len(s.Name) > max_name_length {
 		return errors.New(
-			fmt.Sprintf("name exceeds maximum lenght of: %d characters", max_name_length),
+			fmt.Sprintf("name exceeds maximum length of: %d characters", max_name_length),
 		)
 	} else if !email_regex.MatchString(s.Email) {
 		return errors.New(

@@ -268,6 +268,57 @@ func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 	}
 }
 
+func Test_Subscribe_InvalidParameters_Fails(t *testing.T) {
+	// initialization
+	db, e := spawn_mock_database()
+	if e != nil {
+		t.Fatal(e)
+	}
+	router := spawn_mock_router(db)
+
+	long_email := "a" + strings.Repeat("a", 100) + "@test.com"
+	long_name := "a" + strings.Repeat("a", 100)
+
+	var test_cases []string
+	test_cases = append(test_cases,
+		fmt.Sprintf(`{"email": "%v", "name": "Test User"}`, long_email),
+		fmt.Sprintf(`{"email": "test@test.com", "name": "%v"}`, long_name),
+		fmt.Sprintf(`{"email": "%v", "name": "%v"}`, long_email, long_name),
+	)
+
+	var expected_bodys []string
+	expected_bodys = append(expected_bodys,
+		`{"error":"email exceeds maximum length of: 100 characters","request_id":""}`,
+		`{"error":"name exceeds maximum length of: 100 characters","request_id":""}`,
+		`{"error":"email exceeds maximum length of: 100 characters","request_id":""}`,
+	)
+
+	for i, tc := range test_cases {
+		request, e := http.NewRequest("POST", "/subscribe", strings.NewReader(tc))
+		if e != nil {
+			t.Fatal(e)
+		}
+
+		db.ExpectExec("INSERT INTO subscriptions").
+			WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg())
+
+		app := spawn_app(router, request)
+		defer db.ExpectationsWereMet()
+		defer db.Close(app.context)
+
+		// tests
+		if status := app.recorder.Code; status != http.StatusBadRequest {
+			t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
+		}
+
+		expected_body := expected_bodys[i]
+		response_body := app.recorder.Body.String()
+		if response_body != expected_body {
+			t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+		}
+	}
+}
+
 func spawn_mock_database() (pgxmock.PgxConnIface, error) {
 	mock_db, e := pgxmock.NewConn()
 	if e != nil {
