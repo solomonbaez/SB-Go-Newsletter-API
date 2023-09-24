@@ -268,7 +268,7 @@ func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 	}
 }
 
-func Test_Subscribe_InvalidParameters_Fails(t *testing.T) {
+func Test_Subscribe_MaxLengthParameters_Fails(t *testing.T) {
 	// initialization
 	db, e := spawn_mock_database()
 	if e != nil {
