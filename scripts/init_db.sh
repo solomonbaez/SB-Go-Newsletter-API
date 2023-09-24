@@ -28,12 +28,15 @@ if [ ! -d "${MIGRATIONS_DIR}" ]; then
 fi
 
 # configurations
-export DB_PASS="${POSTGRES_PASS:=password}"
+DB_PASS="${POSTGRES_PASS:=password}"
 DB_USER="${POSTGRES_USER:=postgres}"
 DB_NAME="${POSTGRES_NAME:=newsletter}"
 DB_HOST="${POSTGRES_HOST:=localhost}"
 DB_PORT="${POSTGRES_PORT:=5432}"
 SSLMODE="disable" 
+
+# CI/CD requirement
+export PGPASSWORD="${DB_PASS}"
 
 # check docker status
 if [[ -z "${SKIP_DOCKER}" ]]
