@@ -60,33 +60,33 @@ jobs:
       - name: Run Go vet
         run: go vet ./api
         
-  # coverage:
-  #   name: Code Coverage
-  #   runs-on: ubuntu-latest
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
 
-  #   services:
-  #     postgres:
-  #       image: postgres:latest
-  #       env:
-  #         POSTGRES_USER: postgres
-  #         POSTGRES_PASSWORD: password
-  #         POSTGRES_DB: newsletter
-  #       ports:
-  #         - 5432:5432
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: newsletter
+        ports:
+          - 5432:5432
 
-  #   steps:
-  #     - uses: actions/checkout@v3
+    steps:
+      - uses: actions/checkout@v3
       
-  #     - name: Set up Go
-  #       uses: actions/setup-go@v4
-  #       with:
-  #         go-version: 1.21.1
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.1
 
-  #     - name: Install dependencies
-  #       run: go mod download
+      - name: Install dependencies
+        run: go mod download
 
-  #     - name: Migrate database
-  #       run: SKIP_DOCKER=true ./scripts/init_db.sh
+      - name: Migrate database
+        run: SKIP_DOCKER=true ./scripts/init_db.sh
 
-  #     - name: Generate code coverage
-  #       run: go test -coverprofile=coverage.out ./api && go tool cover -func=coverage.out
+      - name: Generate code coverage
+        run: go test -coverprofile=coverage.out ./api && go tool cover -func=coverage.out
