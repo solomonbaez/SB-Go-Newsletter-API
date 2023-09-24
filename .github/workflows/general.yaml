@@ -61,7 +61,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: dominikh/staticcheck-action@v1.2.0
+      - name: Install Staticcheck
+        run: go -u install honnef.co/go/tools/cmd/staticcheck@latest
+      - name: Run Staticcheck
+        run: staticcheck ./api
 
   # coverage:
   #   name: Code Coverage
