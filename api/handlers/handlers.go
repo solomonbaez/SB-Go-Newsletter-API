@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -203,17 +202,13 @@ func HealthCheck(c *gin.Context) {
 
 func ValidateInputs(s models.Subscriber) error {
 	if len(s.Email) > max_email_length {
-		return errors.New(
-			fmt.Sprintf("email exceeds maximum length of: %d characters", max_email_length),
-		)
+		return fmt.Errorf("email exceeds maximum length of: %d characters", max_email_length)
+
 	} else if len(s.Name) > max_name_length {
-		return errors.New(
-			fmt.Sprintf("name exceeds maximum length of: %d characters", max_name_length),
-		)
+		return fmt.Errorf("name exceeds maximum length of: %d characters", max_name_length)
+
 	} else if !email_regex.MatchString(s.Email) {
-		return errors.New(
-			fmt.Sprintf("invalid email format"),
-		)
+		return fmt.Errorf("invalid email format")
 	}
 
 	return nil
