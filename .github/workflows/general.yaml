@@ -4,15 +4,11 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '../api'
 
   pull_request:
     types: [ opened, synchronize, reopened ]
     branches:
       - main
-    paths:
-      - '../api'
 
   workflow_dispatch:
 
@@ -62,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Staticcheck
-        run: go -u install honnef.co/go/tools/cmd/staticcheck@latest
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
       - name: Run Staticcheck
         run: staticcheck ./api
 
