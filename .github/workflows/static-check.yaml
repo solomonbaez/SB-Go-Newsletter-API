@@ -23,3 +23,5 @@ jobs:
       - uses: dominikh/staticcheck-action@v1.3.0
         with:
           version: "2023.1.6"
+          # pgxmock fails staticcheck
+          build-tags: "-ignore 'github.com/pashagolub/pgxmock/v3'"
