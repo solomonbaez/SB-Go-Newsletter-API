@@ -65,7 +65,7 @@ func main() {
 	}
 
 	// initialize database
-	db, e := initialize_database(context.Background())
+	db, e = initialize_database(context.Background())
 	if e != nil {
 		log.Fatal().
 			Err(e).
