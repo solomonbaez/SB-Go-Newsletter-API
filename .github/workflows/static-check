@@ -1,0 +1,25 @@
+name: Static-Check
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  staticcheck:
+  	name: Run Staticcheck
+  	runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+      fetch-depth: 1
+    - uses: dominikh/staticcheck-action@v0.4.6
+      with:
+      version: "2023.1.6"
