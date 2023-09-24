@@ -43,7 +43,7 @@ jobs:
         run: go mod download
 
       - name: Migrate database
-        run: ./scripts/init_db.sh
+        run: SKIP_DOCKER=true ./scripts/init_db.sh
 
       - name: Run tests
         run: go test ./tests
