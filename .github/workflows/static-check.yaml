@@ -24,4 +24,4 @@ jobs:
         with:
           version: "2023.1.6"
           # pgxmock fails staticcheck
-          build-tags: "-ignore 'github.com/pashagolub/pgxmock/v3'"
+          build-tags: "-ignore 'github.com/pashagolub/pgxmock/v3.*'"
