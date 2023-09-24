@@ -28,4 +28,4 @@ jobs:
       run: |
         go mod tidy
         go list -m -u all
-        govulncheck -c 10 -o .
+        govulncheck
