@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - './api'
+      - '../api'
 
   pull_request:
     types: [ opened, synchronize, reopened ]
     branches:
       - main
     paths:
-      - './api'
+      - '../api'
 
   workflow_dispatch:
 
@@ -64,7 +64,7 @@ jobs:
       - name: Install Staticcheck
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
       - name: Run Staticcheck
-        run: golint ./api
+        run: staticcheck ./api
 
   # coverage:
   #   name: Code Coverage
