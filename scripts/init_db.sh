@@ -35,9 +35,9 @@ DB_HOST="${POSTGRES_HOST:=localhost}"
 DB_PORT="${POSTGRES_PORT:=5432}"
 SSLMODE="disable" 
 
-# DEV - remove test container
-docker stop newsletter
-docker rm newsletter
+# # DEV - remove test container
+# docker stop newsletter
+# docker rm newsletter
 
 docker run \
     --name newsletter \
