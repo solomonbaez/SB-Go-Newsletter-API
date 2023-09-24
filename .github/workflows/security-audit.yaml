@@ -27,6 +27,5 @@ jobs:
     - name: Run security audit
       run: |
         go mod tidy
-        go mod vendor
         go list -m -u all | xargs -n1 go get -v
         govulncheck -c 10 -o .
