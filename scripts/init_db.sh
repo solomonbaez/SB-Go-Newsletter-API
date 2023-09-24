@@ -28,8 +28,8 @@ if [ ! -d "${MIGRATIONS_DIR}" ]; then
 fi
 
 # configurations
+export DB_PASS="${POSTGRES_PASS:=password}"
 DB_USER="${POSTGRES_USER:=postgres}"
-DB_PASS="${POSTGRES_PASS:=password}"
 DB_NAME="${POSTGRES_NAME:=newsletter}"
 DB_HOST="${POSTGRES_HOST:=localhost}"
 DB_PORT="${POSTGRES_PORT:=5432}"
@@ -47,7 +47,6 @@ then
         -d postgres  
 fi
 
-export PGPASSWORD="${DB_PASSWORD}"
 until psql -h "${DB_HOST}" -U "${DB_USER}" -p "${DB_PORT}" -d "postgres" -c '\q'; do
     >&2 echo "Postgres is still unavailable - sleeping"
     sleep 1
@@ -58,7 +57,6 @@ done
 # environment
 DB_URL="postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${SSLMODE}"
 export DB_URL
-export DB_PASS
 
 # apply migrations
 migrate -source "file://${MIGRATIONS_DIR}" -database "${DB_URL}" up
