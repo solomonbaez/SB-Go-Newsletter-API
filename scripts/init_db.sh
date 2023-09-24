@@ -35,17 +35,17 @@ DB_HOST="${POSTGRES_HOST:=localhost}"
 DB_PORT="${POSTGRES_PORT:=5432}"
 SSLMODE="disable" 
 
-# # DEV - remove test container
-# docker stop newsletter
-# docker rm newsletter
-
-docker run \
-    --name newsletter \
-    -e POSTGRES_USER="${DB_USER}" \
-    -e POSTGRES_PASSWORD="${DB_PASS}" \
-    -e POSTGRES_DB="${DB_NAME}" \
-    -p "${DB_PORT}":5432 \
-    -d postgres  
+# check docker status
+if [[ -z "${SKIP_DOCKER}" ]]
+then
+    docker run \
+        --name newsletter \
+        -e POSTGRES_USER="${DB_USER}" \
+        -e POSTGRES_PASSWORD="${DB_PASS}" \
+        -e POSTGRES_DB="${DB_NAME}" \
+        -p "${DB_PORT}":5432 \
+        -d postgres  
+fi
 
 until psql -h "${DB_HOST}" -U "${DB_USER}" -p "${DB_PORT}" -d "postgres" -c '\q'; do
     >&2 echo "Postgres is still unavailable - sleeping"
