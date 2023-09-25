@@ -221,7 +221,6 @@ func ValidateInputs(s models.Subscriber) error {
 
 	// length checks
 	if len(s.Email) > max_email_length {
-
 		return fmt.Errorf("email exceeds maximum length of: %d characters", max_email_length)
 	}
 	if len(s.Name) > max_name_length {
