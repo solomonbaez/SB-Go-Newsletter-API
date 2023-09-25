@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -24,7 +25,24 @@ type Subscriber struct {
 }
 
 type SubscriberEmail string
-type SubscriberName string
+
+func (email SubscriberEmail) String() string {
+	return string(email)
+}
+
+func (email SubscriberEmail) MarshalJSON() ([]byte, error) {
+	return json.Marshal(email.String())
+}
+
+func (email *SubscriberEmail) UnmarshalJSON(data []byte) error {
+	var emailData string
+	if e := json.Unmarshal(data, &emailData); e != nil {
+		return e
+	}
+
+	*email = SubscriberEmail(emailData)
+	return nil
+}
 
 func ParseEmail(e string) (SubscriberEmail, error) {
 	// empty field check
@@ -44,6 +62,26 @@ func ParseEmail(e string) (SubscriberEmail, error) {
 	}
 
 	return SubscriberEmail(e), nil
+}
+
+type SubscriberName string
+
+func (name SubscriberName) String() string {
+	return string(name)
+}
+
+func (name SubscriberName) MarshalJSON() ([]byte, error) {
+	return json.Marshal(name.String())
+}
+
+func (name *SubscriberName) UnmarshalJSON(data []byte) error {
+	var nameData string
+	if e := json.Unmarshal(data, &nameData); e != nil {
+		return e
+	}
+
+	*name = SubscriberName(nameData)
+	return nil
 }
 
 func ParseName(n string) (SubscriberName, error) {

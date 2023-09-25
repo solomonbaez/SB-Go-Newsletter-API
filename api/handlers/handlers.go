@@ -90,8 +90,8 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	// correlate request with inputs
 	log.Info().
 		Str("request_id", request_id).
-		Str("email", subscriber.Email).
-		Str("name", subscriber.Name).
+		Str("email", subscriber.Email.String()).
+		Str("name", subscriber.Name.String()).
 		Msg("")
 
 	log.Info().
@@ -99,7 +99,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 		Msg("Subscribing...")
 
 	query := "INSERT INTO subscriptions (id, email, name, created) VALUES ($1, $2, $3, $4)"
-	_, e := rh.DB.Exec(c, query, id, subscriber.Email, subscriber.Name, created)
+	_, e = rh.DB.Exec(c, query, id, subscriber.Email.String(), subscriber.Name.String(), created)
 	if e != nil {
 		response := fmt.Sprintf("Failed to subscribe, %v", e.Error())
 		log.Error().
@@ -113,8 +113,8 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 
 	log.Info().
 		Str("request_id", request_id).
-		Str("email", subscriber.Email).
-		Msg(fmt.Sprintf("Success, %v subscribed!", subscriber.Email))
+		Str("email", subscriber.Email.String()).
+		Msg(fmt.Sprintf("Success, %v subscribed!", subscriber.Email.String()))
 
 	c.JSON(http.StatusCreated, gin.H{"request_id": request_id, "subscriber": subscriber})
 }
@@ -216,15 +216,15 @@ func HealthCheck(c *gin.Context) {
 
 func BuildSubscriber(row pgx.CollectableRow) (models.Subscriber, error) {
 	var id string
-	var email string
-	var name string
+	var email models.SubscriberEmail
+	var name models.SubscriberName
 	var created time.Time
 
 	e := row.Scan(&id, &email, &name, &created)
 	s := models.Subscriber{
 		ID:    id,
-		Email: models.SubscriberEmail(email),
-		Name:  models.SubscriberName(name),
+		Email: email,
+		Name:  name,
 	}
 
 	return s, e
