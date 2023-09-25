@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -201,7 +203,19 @@ func HealthCheck(c *gin.Context) {
 }
 
 func ValidateInputs(s models.Subscriber) error {
-	if len(s.Email) > max_email_length {
+	invalid_runes := "{}/\\<>()"
+	name_runes := []rune(s.Name)
+	for i := 0; i < len(name_runes); i++ {
+		c := string(name_runes[i])
+		if strings.Contains(invalid_runes, c) {
+			return fmt.Errorf("name contains invalid character: %v", c)
+		}
+	}
+
+	if len(s.Email) == 0 || len(s.Name) == 0 {
+		return errors.New("fields can not be empty")
+
+	} else if len(s.Email) > max_email_length {
 		return fmt.Errorf("email exceeds maximum length of: %d characters", max_email_length)
 
 	} else if len(s.Name) > max_name_length {
