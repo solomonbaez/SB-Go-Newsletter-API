@@ -36,6 +36,7 @@ func NewRouteHandler(db Database) *RouteHandler {
 const (
 	max_email_length = 100
 	max_name_length  = 100
+	invalid_runes    = "{}/\\<>()"
 )
 
 var (
@@ -203,25 +204,32 @@ func HealthCheck(c *gin.Context) {
 }
 
 func ValidateInputs(s models.Subscriber) error {
-	invalid_runes := "{}/\\<>()"
-	name_runes := []rune(s.Name)
-	for i := 0; i < len(name_runes); i++ {
-		c := string(name_runes[i])
+	// injection check
+	for _, r := range s.Name {
+		c := string(r)
 		if strings.Contains(invalid_runes, c) {
 			return fmt.Errorf("name contains invalid character: %v", c)
 		}
 	}
 
-	if len(s.Email) == 0 || len(s.Name) == 0 {
-		return errors.New("fields can not be empty")
+	// empty field check
+	email_trim := strings.Trim(s.Email, " ")
+	name_trim := strings.Trim(s.Name, " ")
+	if email_trim == "" || name_trim == "" {
+		return errors.New("fields can not be empty or whitespace")
+	}
 
-	} else if len(s.Email) > max_email_length {
+	// length checks
+	if len(s.Email) > max_email_length {
+
 		return fmt.Errorf("email exceeds maximum length of: %d characters", max_email_length)
-
-	} else if len(s.Name) > max_name_length {
+	}
+	if len(s.Name) > max_name_length {
 		return fmt.Errorf("name exceeds maximum length of: %d characters", max_name_length)
+	}
 
-	} else if !email_regex.MatchString(s.Email) {
+	// email format check
+	if !email_regex.MatchString(s.Email) {
 		return fmt.Errorf("invalid email format")
 	}
 
