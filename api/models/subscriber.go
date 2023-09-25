@@ -18,65 +18,53 @@ var (
 )
 
 type Subscriber struct {
-	ID    string `json:"id"`
-	Email SubscriberEmail
-	Name  SubscriberName
+	ID    string          `json:"id"`
+	Email SubscriberEmail `json:"email"`
+	Name  SubscriberName  `json:"name"`
 }
 
-type SubscriberEmail struct {
-	Email string `json:"email"`
-}
-type SubscriberName struct {
-	Name string `json:"name"`
-}
+type SubscriberEmail string
+type SubscriberName string
 
-func ParseEmail(e string) SubscriberEmail {
+func ParseEmail(e string) (SubscriberEmail, error) {
 	// empty field check
 	eTrim := strings.Trim(e, " ")
 	if eTrim == "" {
-		panic(errors.New("fields can not be empty or whitespace"))
+		return "", errors.New("fields can not be empty or whitespace")
 	}
 
 	// length checks
 	if len(e) > maxEmailLength {
-		panic(fmt.Errorf("email exceeds maximum length of: %d characters", maxEmailLength))
+		return "", fmt.Errorf("email exceeds maximum length of: %d characters", maxEmailLength)
 	}
 
 	// email format check
 	if !emailRegex.MatchString(e) {
-		panic(fmt.Errorf("invalid email format"))
+		return "", fmt.Errorf("invalid email format")
 	}
 
-	email := SubscriberEmail{
-		Email: e,
-	}
-
-	return email
+	return SubscriberEmail(e), nil
 }
 
-func ParseName(n string) SubscriberName {
+func ParseName(n string) (SubscriberName, error) {
 	// injection check
 	for _, r := range n {
 		c := string(r)
 		if strings.Contains(invalidRunes, c) {
-			panic(fmt.Errorf("invalid character in name: %v", c))
+			return "", fmt.Errorf("invalid character in name: %v", c)
 		}
 	}
 
 	// empty field check
 	nTrim := strings.Trim(n, " ")
 	if nTrim == "" {
-		panic(errors.New("name cannot be empty or whitespace"))
+		return "", errors.New("name cannot be empty or whitespace")
 	}
 
 	// length checks
 	if len(n) > maxNameLength {
-		panic(fmt.Errorf("name exceeds maximum length of: %d characters", maxNameLength))
+		return "", fmt.Errorf("name exceeds maximum length of: %d characters", maxNameLength)
 	}
 
-	name := SubscriberName{
-		Name: n,
-	}
-
-	return name
+	return SubscriberName(n), nil
 }
