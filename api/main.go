@@ -36,13 +36,13 @@ func init() {
 }
 
 var db *pgxpool.Pool
-var enable_tracing = false
+var enableTracing = true
 
 // server
 func main() {
 	var exporter *stdouttrace.Exporter
 	var e error
-	if enable_tracing {
+	if enableTracing {
 		exporter, e = stdouttrace.New(stdouttrace.WithPrettyPrint())
 		if e != nil {
 			log.Fatal().
@@ -65,7 +65,7 @@ func main() {
 	}
 
 	// initialize database
-	db, e = initialize_database(context.Background())
+	db, e = initializeDatabase(context.Background())
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -82,7 +82,7 @@ func main() {
 	// initialize server components
 	rh := handlers.NewRouteHandler(db)
 
-	router, listener, e := initialize_server(rh)
+	router, listener, e := initializeServer(rh)
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -112,8 +112,8 @@ func main() {
 	}
 }
 
-func initialize_database(c context.Context) (*pgxpool.Pool, error) {
-	db, e := pgxpool.New(c, cfg.Database.Connection_String())
+func initializeDatabase(c context.Context) (*pgxpool.Pool, error) {
+	db, e := pgxpool.New(c, cfg.Database.ConnectionString())
 	if e != nil {
 		return nil, e
 	}
@@ -125,12 +125,12 @@ func initialize_database(c context.Context) (*pgxpool.Pool, error) {
 	return db, nil
 }
 
-func initialize_server(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, error) {
+func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, error) {
 	// router
 	router := gin.Default()
 
 	// dev
-	if enable_tracing {
+	if enableTracing {
 		router.Use(TraceMiddleware())
 	}
 
@@ -158,22 +158,22 @@ func initialize_server(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, er
 func TraceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// request identification
-		request_id := uuid.NewString()
-		c.Set("request_id", request_id)
+		requestID := uuid.NewString()
+		c.Set("requestID", requestID)
 		log.Info().
-			Str("request_id", request_id).
+			Str("requestID", requestID).
 			Msg(fmt.Sprintf("New %v request...", c.Request.Method))
 
 		// tracing
-		span_ctx := otel.
+		spanCTX := otel.
 			GetTextMapPropagator().
 			Extract(
 				c.Request.Context(),
 				propagation.HeaderCarrier(c.Request.Header),
 			)
 
-		ctx, span := otel.Tracer("http-server").Start(span_ctx, c.Request.URL.Path)
-		span.SetAttributes(attribute.String("request_id", request_id))
+		ctx, span := otel.Tracer("http-server").Start(spanCTX, c.Request.URL.Path)
+		span.SetAttributes(attribute.String("requestID", requestID))
 		defer span.End()
 
 		c.Request = c.Request.WithContext(ctx)

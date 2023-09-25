@@ -21,7 +21,7 @@ type DBSettings struct {
 	Name string
 }
 
-func (db DBSettings) Connection_String() string {
+func (db DBSettings) ConnectionString() string {
 	return fmt.Sprintf(
 		"postgres://%v:%v@%v:%v/%v",
 		db.User, db.Pass, db.Host, db.Port, db.Name,
