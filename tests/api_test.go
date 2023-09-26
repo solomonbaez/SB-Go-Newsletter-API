@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
 type app struct {
@@ -94,7 +95,7 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 	mock_id := uuid.NewString()
 	db.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
 		pgxmock.NewRows([]string{"id", "email", "name", "created"}).
-			AddRow(mock_id, "test@test.com", "Test User", time.Now()),
+			AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User"), time.Now()),
 	)
 
 	app := spawn_app(router, request)
@@ -132,7 +133,7 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name"}).
-				AddRow(mock_id, "test@test.com", "Test User"),
+				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User")),
 		)
 
 	// tests
@@ -172,7 +173,7 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name"}).
-				AddRow(mock_id, "test@test.com", "Test User"),
+				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User")),
 		)
 
 	// tests
@@ -184,7 +185,7 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
 	}
 
-	expected_body := `{"error":"Invalid ID format, invalid UUID length: 1","requestID":""}`
+	expected_body := `{"error":"Invalid ID format: invalid UUID length: 1","requestID":""}`
 	response_body := app.recorder.Body.String()
 
 	if response_body != expected_body {
@@ -260,7 +261,7 @@ func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 			t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
 		}
 
-		expected_body := `{"error":"invalid email format","requestID":""}`
+		expected_body := `{"error":"Could not subscribe: invalid email format","requestID":""}`
 		response_body := app.recorder.Body.String()
 		if response_body != expected_body {
 			t.Errorf("Expected body %v, but got %v", expected_body, response_body)
