@@ -71,7 +71,7 @@ func Test_GetSubscribers_NoSubscribers_Passes(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
 	}
 
-	expected_body := `{"request_id":"","subscribers":"No subscribers"}`
+	expected_body := `{"requestID":"","subscribers":"No subscribers"}`
 	response_body := app.recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
@@ -106,7 +106,7 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
 	}
 
-	expected_body := fmt.Sprintf(`{"request_id":"","subscribers":[{"id":"%v","email":"test@test.com","name":"Test User"}]}`, mock_id)
+	expected_body := fmt.Sprintf(`{"requestID":"","subscribers":[{"id":"%v","email":"test@test.com","name":"Test User"}]}`, mock_id)
 	response_body := app.recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
@@ -144,7 +144,7 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusFound, status)
 	}
 
-	expected_body := fmt.Sprintf(`{"request_id":"","subscriber":{"id":"%v","email":"test@test.com","name":"Test User"}}`, mock_id)
+	expected_body := fmt.Sprintf(`{"requestID":"","subscriber":{"id":"%v","email":"test@test.com","name":"Test User"}}`, mock_id)
 	response_body := app.recorder.Body.String()
 
 	if response_body != expected_body {
@@ -184,7 +184,7 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
 	}
 
-	expected_body := `{"error":"Invalid ID format, invalid UUID length: 1","request_id":""}`
+	expected_body := `{"error":"Invalid ID format, invalid UUID length: 1","requestID":""}`
 	response_body := app.recorder.Body.String()
 
 	if response_body != expected_body {
@@ -219,7 +219,7 @@ func Test_Subscribe(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusCreated, status)
 	}
 
-	expected_body := `{"request_id":"","subscriber":{"id":"","email":"test@test.com","name":"Test User"}}`
+	expected_body := `{"requestID":"","subscriber":{"id":"","email":"test@test.com","name":"Test User"}}`
 	response_body := app.recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
@@ -260,7 +260,7 @@ func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 			t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
 		}
 
-		expected_body := `{"error":"invalid email format","request_id":""}`
+		expected_body := `{"error":"invalid email format","requestID":""}`
 		response_body := app.recorder.Body.String()
 		if response_body != expected_body {
 			t.Errorf("Expected body %v, but got %v", expected_body, response_body)
@@ -288,9 +288,9 @@ func Test_Subscribe_MaxLengthParameters_Fails(t *testing.T) {
 
 	var expected_bodys []string
 	expected_bodys = append(expected_bodys,
-		`{"error":"email exceeds maximum length of: 100 characters","request_id":""}`,
-		`{"error":"name exceeds maximum length of: 100 characters","request_id":""}`,
-		`{"error":"email exceeds maximum length of: 100 characters","request_id":""}`,
+		`{"error":"Could not subscribe: email exceeds maximum length of: 100 characters","requestID":""}`,
+		`{"error":"Could not subscribe: name exceeds maximum length of: 100 characters","requestID":""}`,
+		`{"error":"Could not subscribe: email exceeds maximum length of: 100 characters","requestID":""}`,
 	)
 
 	for i, tc := range test_cases {

@@ -36,7 +36,7 @@ func init() {
 }
 
 var db *pgxpool.Pool
-var enableTracing = true
+var enableTracing = false
 
 // server
 func main() {
