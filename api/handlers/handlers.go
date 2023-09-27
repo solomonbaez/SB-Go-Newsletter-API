@@ -39,7 +39,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	var subscriber models.Subscriber
 	var loader Loader
 
-	requestID := c.GetString("request_id")
+	requestID := c.GetString("requestID")
 
 	id := uuid.NewString()
 	created := time.Now()
@@ -51,7 +51,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	}
 
 	log.Info().
-		Str("request_id", requestID).
+		Str("requestID", requestID).
 		Msg("Validating inputs...")
 
 	email, e := models.ParseEmail(loader.Email)
@@ -92,7 +92,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context) {
 	}
 
 	log.Info().
-		Str("request_id", requestID).
+		Str("requestID", requestID).
 		Str("email", subscriber.Email.String()).
 		Msg(fmt.Sprintf("Success, %v subscribed!", subscriber.Email.String()))
 

@@ -1,6 +1,7 @@
 package email
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/go-gomail/gomail"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
@@ -37,7 +38,9 @@ func NewEmailClient(
 	}
 }
 
-func (client EmailClient) SendEmail(email Email) error {
+func (client EmailClient) SendEmail(c *gin.Context, email Email) error {
+	requestID := c.GetString("requestID")
+
 	message := gomail.NewMessage()
 	message.SetHeader("From", client.Sender.String())
 	message.SetHeader("To", email.Recipient.String())
@@ -46,6 +49,7 @@ func (client EmailClient) SendEmail(email Email) error {
 	message.AddAlternative("text/html", email.Html)
 
 	log.Info().
+		Str("requestID", requestID).
 		Str("sender", client.Sender.String()).
 		Str("recipient", email.Recipient.String()).
 		Msg("Attempting to send an email")
@@ -60,6 +64,7 @@ func (client EmailClient) SendEmail(email Email) error {
 	}
 
 	log.Info().
+		Str("requestID", requestID).
 		Str("sender", client.Sender.String()).
 		Str("recipient", email.Recipient.String()).
 		Msg("Email sent")
