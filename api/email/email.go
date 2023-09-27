@@ -1,6 +1,7 @@
 package email
 
 import (
+	"github.com/go-gomail/gomail"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
@@ -36,10 +37,32 @@ func NewEmailClient(
 	}
 }
 
-func (client EmailClient) SendEmail(email Email) Email {
+func (client EmailClient) SendEmail(email Email) error {
+	message := gomail.NewMessage()
+	message.SetHeader("From", client.Sender.String())
+	message.SetHeader("To", email.Recipient.String())
+	message.SetHeader("Subject", email.Subject)
+	message.SetBody("text/plain", email.Text)
+	message.AddAlternative("text/html", email.Html)
+
 	log.Info().
 		Str("sender", client.Sender.String()).
+		Str("recipient", email.Recipient.String()).
 		Msg("Attempting to send an email")
 
-	return email
+	dialer := gomail.NewDialer(client.SMTPServer, client.SMTPPort, client.SMTPUsername, client.SMTPassword)
+	if e := dialer.DialAndSend(message); e != nil {
+		log.Error().
+			Err(e).
+			Msg("Failed to send email")
+
+		return e
+	}
+
+	log.Info().
+		Str("sender", client.Sender.String()).
+		Str("recipient", email.Recipient.String()).
+		Msg("Email sent")
+
+	return nil
 }
