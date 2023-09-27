@@ -8,7 +8,11 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
-type EmailClient struct {
+type EmailClient interface {
+	SendEmail(c *gin.Context, email Email) error
+}
+
+type SMTPClient struct {
 	smtpServer   string
 	smtpPort     int
 	smtpUsername string
@@ -23,7 +27,7 @@ type Email struct {
 	Text      string
 }
 
-func NewEmailClient() (*EmailClient, error) {
+func NewSMTPClient() (*SMTPClient, error) {
 	cfg, e := configs.ConfigureEmailClient()
 	if e != nil {
 		return nil, e
@@ -36,7 +40,7 @@ func NewEmailClient() (*EmailClient, error) {
 		return nil, e
 	}
 
-	client := &EmailClient{
+	client := &SMTPClient{
 		cfg.Server,
 		cfg.Port,
 		cfg.Username,
@@ -47,7 +51,7 @@ func NewEmailClient() (*EmailClient, error) {
 	return client, nil
 }
 
-func (client *EmailClient) SendEmail(c *gin.Context, email Email) error {
+func (client *SMTPClient) SendEmail(c *gin.Context, email Email) error {
 	requestID := c.GetString("requestID")
 
 	message := gomail.NewMessage()
