@@ -6,30 +6,36 @@ import (
 	"github.com/spf13/viper"
 )
 
+const CFG = "./api/configs/dev.yaml"
+
+func init() {
+	viper.SetConfigFile(CFG)
+}
+
+// APPLICATION
 type AppSettings struct {
 	Database DBSettings
 	Port     uint16
 }
 
 type DBSettings struct {
-	User string
-	Pass string
-	Host string
-	Port uint16
-	Name string
+	user string
+	pass string
+	host string
+	port uint16
+	name string
 }
 
 func (db DBSettings) ConnectionString() string {
 	return fmt.Sprintf(
 		"postgres://%v:%v@%v:%v/%v",
-		db.User, db.Pass, db.Host, db.Port, db.Name,
+		db.user, db.pass, db.host, db.port, db.name,
 	)
 }
 
-func ConfigureApp() (AppSettings, error) {
-	viper.SetConfigFile("./api/configs/dev.yaml")
+func ConfigureApp() (*AppSettings, error) {
 	if e := viper.ReadInConfig(); e != nil {
-		return AppSettings{}, e
+		return nil, e
 	}
 
 	database := DBSettings{
@@ -42,10 +48,35 @@ func ConfigureApp() (AppSettings, error) {
 
 	port := viper.GetUint16("application_port")
 
-	app := AppSettings{
+	settings := &AppSettings{
 		Database: database,
 		Port:     port,
 	}
 
-	return app, nil
+	return settings, nil
+}
+
+// EMAIL CLIENT
+type EmailClientSettings struct {
+	Server   string
+	Port     int
+	Username string
+	Password string
+	Sender   string
+}
+
+func ConfigureEmailClient() (*EmailClientSettings, error) {
+	if e := viper.ReadInConfig(); e != nil {
+		return nil, e
+	}
+
+	settings := &EmailClientSettings{
+		viper.GetString("server"),
+		viper.GetInt("port"),
+		viper.GetString("username"),
+		viper.GetString("password"),
+		viper.GetString("sender"),
+	}
+
+	return settings, nil
 }

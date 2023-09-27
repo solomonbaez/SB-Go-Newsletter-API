@@ -5,3 +5,9 @@ database:
   username: "postgres"
   password: "password"
   database_name: "newsletter"
+email:
+  server: "test.com"
+  port: 587
+  username: "test"
+  password: "password"
+  sender: "test@test.com"

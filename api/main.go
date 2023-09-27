@@ -24,18 +24,27 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
+type App struct {
+	database configs.DBSettings
+	port     uint16
+}
+
 // generate application settings
-var cfg configs.AppSettings
+var app *App
 
 func init() {
-	var e error
-	cfg, e = configs.ConfigureApp()
+	cfg, e := configs.ConfigureApp()
 	if e != nil {
 		log.Fatal().
 			Err(e).
 			Msg("Failed to read database config")
 
 		return
+	}
+
+	app = &App{
+		cfg.Database,
+		cfg.Port,
 	}
 }
 
@@ -117,7 +126,7 @@ func main() {
 }
 
 func initializeDatabase(c context.Context) (*pgxpool.Pool, error) {
-	db, e := pgxpool.New(c, cfg.Database.ConnectionString())
+	db, e := pgxpool.New(c, app.database.ConnectionString())
 	if e != nil {
 		return nil, e
 	}
@@ -144,7 +153,7 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	router.POST("/subscribe", rh.Subscribe)
 
 	// listener
-	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", cfg.Port))
+	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", app.port))
 	if e != nil {
 		listener, e = net.Listen("tcp", "localhost:0")
 		if e != nil {
