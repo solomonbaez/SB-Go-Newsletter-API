@@ -28,10 +28,14 @@ import (
 var cfg configs.AppSettings
 
 func init() {
-	database, port := configs.ConfigureApp()
-	cfg = configs.AppSettings{
-		Database: database,
-		Port:     port,
+	var e error
+	cfg, e = configs.ConfigureApp()
+	if e != nil {
+		log.Fatal().
+			Err(e).
+			Msg("Failed to read database config")
+
+		return
 	}
 }
 
