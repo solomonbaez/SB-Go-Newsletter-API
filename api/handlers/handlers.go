@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog/log"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/email"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
@@ -35,7 +36,7 @@ type Loader struct {
 	Name  string `json:"name"`
 }
 
-func (rh RouteHandler) Subscribe(c *gin.Context) {
+func (rh RouteHandler) Subscribe(c *gin.Context, client email.EmailClient) {
 	var subscriber models.Subscriber
 	var loader Loader
 

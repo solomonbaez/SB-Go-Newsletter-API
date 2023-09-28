@@ -148,8 +148,6 @@ func initializeDatabase(c context.Context) (*pgxpool.Pool, error) {
 func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, error) {
 	// router
 	router := gin.Default()
-
-	// dev
 	if enableTracing {
 		router.Use(TraceMiddleware())
 	}
@@ -157,7 +155,7 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/subscribers", rh.GetSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
-	router.POST("/subscribe", rh.Subscribe)
+	router.POST("/subscribe", func(c *gin.Context) { rh.Subscribe(c, client) })
 
 	// listener
 	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", app.port))
