@@ -71,11 +71,11 @@ func ConfigureEmailClient() (*EmailClientSettings, error) {
 	}
 
 	settings := &EmailClientSettings{
-		viper.GetString("server"),
-		viper.GetInt("port"),
-		viper.GetString("username"),
-		viper.GetString("password"),
-		viper.GetString("sender"),
+		viper.GetString("email.server"),
+		viper.GetInt("email.port"),
+		viper.GetString("email.username"),
+		viper.GetString("email.password"),
+		viper.GetString("email.sender"),
 	}
 
 	return settings, nil

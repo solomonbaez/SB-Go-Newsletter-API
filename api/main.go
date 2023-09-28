@@ -21,6 +21,7 @@ import (
 	"go.opentelemetry.io/otel/semconv/v1.18.0"
 
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/email"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
@@ -29,11 +30,11 @@ type App struct {
 	port     uint16
 }
 
-// generate application settings
 var app *App
+var client *email.SMTPClient
 
 func init() {
-	cfg, e := configs.ConfigureApp()
+	app_cfg, e := configs.ConfigureApp()
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -41,10 +42,16 @@ func init() {
 
 		return
 	}
-
 	app = &App{
-		cfg.Database,
-		cfg.Port,
+		app_cfg.Database,
+		app_cfg.Port,
+	}
+
+	client, e = email.NewSMTPClient()
+	if e != nil {
+		log.Fatal().
+			Err(e).
+			Msg("Failed to create new SMTP Client")
 	}
 }
 
