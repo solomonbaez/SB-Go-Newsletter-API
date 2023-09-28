@@ -55,13 +55,13 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client email.EmailClient) {
 		Str("requestID", requestID).
 		Msg("Validating inputs...")
 
-	email, e := models.ParseEmail(loader.Email)
+	s, e := models.ParseEmail(loader.Email)
 	if e != nil {
 		response := "Could not subscribe"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
-	name, e := models.ParseName(loader.Name)
+	n, e := models.ParseName(loader.Name)
 	if e != nil {
 		response := "Could not subscribe"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
@@ -69,8 +69,8 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client email.EmailClient) {
 	}
 
 	subscriber = models.Subscriber{
-		Email: email,
-		Name:  name,
+		Email: s,
+		Name:  n,
 	}
 
 	// correlate request with inputs
@@ -88,6 +88,18 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client email.EmailClient) {
 	_, e = rh.DB.Exec(c, query, id, subscriber.Email.String(), subscriber.Name.String(), created)
 	if e != nil {
 		response := "Failed to subscribe"
+		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
+
+	devMessage := email.Message{
+		Recipient: subscriber.Email,
+		Subject:   "Testing",
+		Text:      "Testing",
+		Html:      "<h1>Testing</h1>",
+	}
+	if e := client.SendEmail(c, devMessage); e != nil {
+		response := "Failed to send confirmation email"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}

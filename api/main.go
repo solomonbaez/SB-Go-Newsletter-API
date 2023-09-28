@@ -34,7 +34,7 @@ var app *App
 var client *email.SMTPClient
 
 func init() {
-	app_cfg, e := configs.ConfigureApp()
+	cfg, e := configs.ConfigureApp()
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -43,8 +43,8 @@ func init() {
 		return
 	}
 	app = &App{
-		app_cfg.Database,
-		app_cfg.Port,
+		cfg.Database,
+		cfg.Port,
 	}
 
 	client, e = email.NewSMTPClient()

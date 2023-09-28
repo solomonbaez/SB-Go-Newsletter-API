@@ -9,7 +9,7 @@ import (
 )
 
 type EmailClient interface {
-	SendEmail(c *gin.Context, email Email) error
+	SendEmail(c *gin.Context, email Message) error
 }
 
 type SMTPClient struct {
@@ -20,11 +20,11 @@ type SMTPClient struct {
 	sender       models.SubscriberEmail
 }
 
-type Email struct {
+type Message struct {
 	Recipient models.SubscriberEmail
 	Subject   string
-	Html      string
 	Text      string
+	Html      string
 }
 
 func NewSMTPClient() (*SMTPClient, error) {
@@ -51,27 +51,27 @@ func NewSMTPClient() (*SMTPClient, error) {
 	return client, nil
 }
 
-func (client *SMTPClient) SendEmail(c *gin.Context, email Email) error {
+func (client *SMTPClient) SendEmail(c *gin.Context, message Message) error {
 	requestID := c.GetString("requestID")
 
-	message := gomail.NewMessage()
-	message.SetHeader("From", client.sender.String())
-	message.SetHeader("To", email.Recipient.String())
-	message.SetHeader("Subject", email.Subject)
-	message.SetBody("text/plain", email.Text)
-	message.AddAlternative("text/html", email.Html)
+	m := gomail.NewMessage()
+	m.SetHeader("From", client.sender.String())
+	m.SetHeader("To", message.Recipient.String())
+	m.SetHeader("Subject", message.Subject)
+	m.SetBody("text/plain", message.Text)
+	m.AddAlternative("text/html", message.Html)
 
 	log.Info().
 		Str("requestID", requestID).
 		Str("sender", client.sender.String()).
-		Str("recipient", email.Recipient.String()).
-		Msg("Attempting to send an email")
+		Str("recipient", message.Recipient.String()).
+		Msg("Attempting to send a confirmation email...")
 
 	dialer := gomail.NewDialer(client.smtpServer, client.smtpPort, client.smtpUsername, client.smtpPassword)
-	if e := dialer.DialAndSend(message); e != nil {
+	if e := dialer.DialAndSend(m); e != nil {
 		log.Error().
 			Err(e).
-			Msg("Failed to send email")
+			Msg("Failed to send confirmation email")
 
 		return e
 	}
@@ -79,7 +79,7 @@ func (client *SMTPClient) SendEmail(c *gin.Context, email Email) error {
 	log.Info().
 		Str("requestID", requestID).
 		Str("sender", client.sender.String()).
-		Str("recipient", email.Recipient.String()).
+		Str("recipient", message.Recipient.String()).
 		Msg("Email sent")
 
 	return nil
