@@ -19,9 +19,10 @@ var (
 )
 
 type Subscriber struct {
-	ID    string          `json:"id"`
-	Email SubscriberEmail `json:"email"`
-	Name  SubscriberName  `json:"name"`
+	ID     string          `json:"id"`
+	Email  SubscriberEmail `json:"email"`
+	Name   SubscriberName  `json:"name"`
+	Status string          `json:"status"`
 }
 
 type SubscriberEmail string

@@ -46,6 +46,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
 
 	newID := uuid.NewString()
 	created := time.Now()
+	status := "pending"
 
 	var response string
 	var e error
@@ -89,8 +90,8 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
 		Str("requestID", requestID).
 		Msg("Subscribing...")
 
-	query := "INSERT INTO subscriptions (id, email, name, created) VALUES ($1, $2, $3, $4)"
-	_, e = rh.DB.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), created)
+	query := "INSERT INTO subscriptions (id, email, name, created, status) VALUES ($1, $2, $3, $4, $5)"
+	_, e = rh.DB.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), created, status)
 	if e != nil {
 		response = "Failed to subscribe"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
@@ -202,12 +203,14 @@ func BuildSubscriber(row pgx.CollectableRow) (*models.Subscriber, error) {
 	var email models.SubscriberEmail
 	var name models.SubscriberName
 	var created time.Time
+	var status string
 
-	e := row.Scan(&id, &email, &name, &created)
+	e := row.Scan(&id, &email, &name, &created, &status)
 	s := &models.Subscriber{
-		ID:    id,
-		Email: email,
-		Name:  name,
+		ID:     id,
+		Email:  email,
+		Name:   name,
+		Status: status,
 	}
 
 	return s, e
