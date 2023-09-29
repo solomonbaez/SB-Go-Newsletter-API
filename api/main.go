@@ -30,6 +30,11 @@ type App struct {
 	port     uint16
 }
 
+const baseUrl = "localhost"
+
+// adjust for slowloris prevention
+var readHeaderTimeout = 5 * time.Second
+
 var app *App
 var client *email.SMTPClient
 
@@ -55,15 +60,13 @@ func init() {
 	}
 }
 
-var db *pgxpool.Pool
+var pool *pgxpool.Pool
 var enableTracing = false
 
 // server
 func main() {
-	var exporter *stdouttrace.Exporter
-	var e error
 	if enableTracing {
-		exporter, e = stdouttrace.New(stdouttrace.WithPrettyPrint())
+		exporter, e := stdouttrace.New(stdouttrace.WithPrettyPrint())
 		if e != nil {
 			log.Fatal().
 				Err(e).
@@ -84,8 +87,9 @@ func main() {
 		otel.SetTracerProvider(tp)
 	}
 
+	var e error
 	// initialize database
-	db, e = initializeDatabase(context.Background())
+	pool, e = initializeDatabase(context.Background())
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -93,33 +97,32 @@ func main() {
 
 		return
 	}
+	defer pool.Close()
 
 	log.Info().
 		Msg("Connected to postgres")
 
-	defer db.Close()
-
 	// initialize server components
-	rh := handlers.NewRouteHandler(db)
-
+	rh := handlers.NewRouteHandler(pool)
 	router, listener, e := initializeServer(rh)
 	if e != nil {
 		log.Fatal().
 			Err(e).
 			Msg("Could not initialize server")
-	}
 
+		return
+	}
 	defer listener.Close()
 
 	addr := listener.Addr().(*net.TCPAddr)
 	log.Info().
 		Int("port", addr.Port).
-		Msg(fmt.Sprintf("Listening: http://%v:%d", "localhost", addr.Port))
+		Msg(fmt.Sprintf("Listening: http://%v:%d", baseUrl, addr.Port))
 
 	// server
 	server := &http.Server{
 		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: readHeaderTimeout,
 	}
 
 	e = server.Serve(listener)
@@ -133,16 +136,16 @@ func main() {
 }
 
 func initializeDatabase(c context.Context) (*pgxpool.Pool, error) {
-	db, e := pgxpool.New(c, app.database.ConnectionString())
+	pool, e := pgxpool.New(c, app.database.ConnectionString())
 	if e != nil {
 		return nil, e
 	}
-	if e = db.Ping(context.Background()); e != nil {
-		db.Close()
+	if e = pool.Ping(context.Background()); e != nil {
+		pool.Close()
 		return nil, e
 	}
 
-	return db, nil
+	return pool, nil
 }
 
 func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, error) {
