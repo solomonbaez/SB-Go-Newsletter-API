@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -36,17 +37,21 @@ type Loader struct {
 	Name  string `json:"name"`
 }
 
+var loader *Loader
+
 func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
-	var subscriber models.Subscriber
-	var loader Loader
+	var subscriber *models.Subscriber
 
 	requestID := c.GetString("requestID")
 
 	newID := uuid.NewString()
 	created := time.Now()
 
-	if e := c.ShouldBindJSON(&loader); e != nil {
-		response := "Could not subscribe"
+	var response string
+	var e error
+
+	if e = c.ShouldBindJSON(&loader); e != nil {
+		response = "Could not subscribe"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
@@ -57,7 +62,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
 
 	subscriberEmail, e := models.ParseEmail(loader.Email)
 	if e != nil {
-		response := "Could not subscribe"
+		response = "Could not subscribe"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
@@ -68,7 +73,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
 		return
 	}
 
-	subscriber = models.Subscriber{
+	subscriber = &models.Subscriber{
 		Email: subscriberEmail,
 		Name:  subscriberName,
 	}
@@ -87,19 +92,19 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
 	query := "INSERT INTO subscriptions (id, email, name, created) VALUES ($1, $2, $3, $4)"
 	_, e = rh.DB.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), created)
 	if e != nil {
-		response := "Failed to subscribe"
+		response = "Failed to subscribe"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
 
-	devMessage := clients.Message{
+	devMessage := &clients.Message{
 		Recipient: subscriber.Email,
 		Subject:   "Testing",
 		Text:      "Testing",
 		Html:      "<h1>Testing</h1>",
 	}
-	if e := client.SendEmail(c, devMessage); e != nil {
-		response := "Failed to send confirmation email"
+	if e = client.SendEmail(c, devMessage); e != nil {
+		response = "Failed to send confirmation email"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
@@ -113,8 +118,11 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
 }
 
 func (rh RouteHandler) GetSubscribers(c *gin.Context) {
-	var subscribers []models.Subscriber
+	var subscribers []*models.Subscriber
 	requestID := c.GetString("requestID")
+
+	var response string
+	var e error
 
 	log.Info().
 		Str("requestID", requestID).
@@ -122,15 +130,15 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 
 	rows, e := rh.DB.Query(c, "SELECT * FROM subscriptions")
 	if e != nil {
-		response := "Failed to fetch subscribers"
+		response = "Failed to fetch subscribers"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	subscribers, e = pgx.CollectRows[models.Subscriber](rows, BuildSubscriber)
+	subscribers, e = pgx.CollectRows[*models.Subscriber](rows, BuildSubscriber)
 	if e != nil {
-		response := "Failed to parse subscribers"
+		response = "Failed to parse subscribers"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
@@ -138,7 +146,7 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 	if len(subscribers) > 0 {
 		c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": subscribers})
 	} else {
-		response := "No subscribers"
+		response = "No subscribers"
 		log.Info().
 			Str("requestID", requestID).
 			Msg(response)
@@ -150,6 +158,9 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 	requestID := c.GetString("requestID")
 
+	var response string
+	var e error
+
 	log.Info().
 		Str("requestID", requestID).
 		Msg("Validating ID...")
@@ -158,7 +169,7 @@ func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 	u := c.Param("id")
 	id, e := uuid.Parse(u)
 	if e != nil {
-		response := "Invalid ID format"
+		response = "Invalid ID format"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
@@ -170,7 +181,6 @@ func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 	var subscriber models.Subscriber
 	e = rh.DB.QueryRow(c, "SELECT id, email, name FROM subscriptions WHERE id=$1", id).Scan(&subscriber.ID, &subscriber.Email, &subscriber.Name)
 	if e != nil {
-		var response string
 		if e == pgx.ErrNoRows {
 			response = "Subscriber not found"
 		} else {
@@ -187,14 +197,14 @@ func HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, "OK")
 }
 
-func BuildSubscriber(row pgx.CollectableRow) (models.Subscriber, error) {
+func BuildSubscriber(row pgx.CollectableRow) (*models.Subscriber, error) {
 	var id string
 	var email models.SubscriberEmail
 	var name models.SubscriberName
 	var created time.Time
 
 	e := row.Scan(&id, &email, &name, &created)
-	s := models.Subscriber{
+	s := &models.Subscriber{
 		ID:    id,
 		Email: email,
 		Name:  name,
@@ -209,5 +219,10 @@ func HandleError(c *gin.Context, id string, e error, response string, status int
 		Err(e).
 		Msg(response)
 
-	c.JSON(status, gin.H{"requestID": id, "error": response + ": " + e.Error()})
+	var message strings.Builder
+	message.WriteString(response)
+	message.WriteString(": ")
+	message.WriteString(e.Error())
+
+	c.JSON(status, gin.H{"requestID": id, "error": message.String()})
 }

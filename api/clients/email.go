@@ -9,7 +9,7 @@ import (
 )
 
 type EmailClient interface {
-	SendEmail(c *gin.Context, email Message) error
+	SendEmail(c *gin.Context, email *Message) error
 }
 
 type SMTPClient struct {
@@ -51,7 +51,7 @@ func NewSMTPClient() (*SMTPClient, error) {
 	return client, nil
 }
 
-func (client *SMTPClient) SendEmail(c *gin.Context, message Message) error {
+func (client *SMTPClient) SendEmail(c *gin.Context, message *Message) error {
 	requestID := c.GetString("requestID")
 
 	m := gomail.NewMessage()
