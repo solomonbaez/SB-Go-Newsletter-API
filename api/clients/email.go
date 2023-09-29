@@ -67,13 +67,16 @@ func (client *SMTPClient) SendEmail(c *gin.Context, message *Message) error {
 		Str("recipient", message.Recipient.String()).
 		Msg("Attempting to send a confirmation email...")
 
-	dialer := gomail.NewDialer(client.smtpServer, client.smtpPort, client.smtpUsername, client.smtpPassword)
-	if e := dialer.DialAndSend(m); e != nil {
-		log.Error().
-			Err(e).
-			Msg("Failed to send confirmation email")
+	// restrict mail delivery in test
+	if client.smtpServer != "test" {
+		dialer := gomail.NewDialer(client.smtpServer, client.smtpPort, client.smtpUsername, client.smtpPassword)
+		if e := dialer.DialAndSend(m); e != nil {
+			log.Error().
+				Err(e).
+				Msg("Failed to send confirmation email")
 
-		return e
+			return e
+		}
 	}
 
 	log.Info().

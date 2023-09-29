@@ -6,7 +6,7 @@ database:
   password: "password"
   database_name: "newsletter"
 email:
-  server: "test.com"
+  server: "test"
   port: 587
   username: "test"
   password: "password"
