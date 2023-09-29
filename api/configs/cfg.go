@@ -65,7 +65,10 @@ type EmailClientSettings struct {
 	Sender   string
 }
 
-func ConfigureEmailClient() (*EmailClientSettings, error) {
+func ConfigureEmailClient(cfg string) (*EmailClientSettings, error) {
+	if cfg != "" {
+		viper.SetConfigFile(cfg)
+	}
 	if e := viper.ReadInConfig(); e != nil {
 		return nil, e
 	}

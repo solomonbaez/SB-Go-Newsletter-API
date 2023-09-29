@@ -52,7 +52,8 @@ func init() {
 		cfg.Port,
 	}
 
-	client, e = clients.NewSMTPClient()
+	// "" for dev.yaml
+	client, e = clients.NewSMTPClient("")
 	if e != nil {
 		log.Fatal().
 			Err(e).

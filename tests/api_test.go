@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v3"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
@@ -48,24 +49,29 @@ func Test_HealthCheck_Returns_OK(t *testing.T) {
 
 func Test_GetSubscribers_NoSubscribers_Passes(t *testing.T) {
 	// initialize
-	db, e := spawn_mock_database()
+	database, e := spawn_mock_database()
 	if e != nil {
 		t.Fatal(e)
 	}
-	router := spawn_mock_router(db)
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
 
 	request, e := http.NewRequest("GET", "/subscribers", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 
-	db.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
+	database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
 		pgxmock.NewRows([]string{"id", "email", "name", "created"}),
 	)
 
 	app := spawn_app(router, request)
-	defer db.ExpectationsWereMet()
-	defer db.Close(app.context)
+	defer database.ExpectationsWereMet()
+	defer database.Close(app.context)
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
@@ -81,11 +87,16 @@ func Test_GetSubscribers_NoSubscribers_Passes(t *testing.T) {
 
 func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 	// initialization
-	db, e := spawn_mock_database()
+	database, e := spawn_mock_database()
 	if e != nil {
 		t.Fatal(e)
 	}
-	router := spawn_mock_router(db)
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
 
 	request, e := http.NewRequest("GET", "/subscribers", nil)
 	if e != nil {
@@ -93,14 +104,14 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 	}
 
 	mock_id := uuid.NewString()
-	db.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
+	database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
 		pgxmock.NewRows([]string{"id", "email", "name", "created"}).
 			AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User"), time.Now()),
 	)
 
 	app := spawn_app(router, request)
-	defer db.ExpectationsWereMet()
-	defer db.Close(app.context)
+	defer database.ExpectationsWereMet()
+	defer database.Close(app.context)
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
@@ -116,11 +127,16 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 
 func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 	// initialization
-	db, e := spawn_mock_database()
+	database, e := spawn_mock_database()
 	if e != nil {
 		t.Fatal(e)
 	}
-	router := spawn_mock_router(db)
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
 
 	mock_id := uuid.NewString()
 
@@ -129,7 +145,7 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	db.ExpectQuery(`SELECT id, email, name FROM subscriptions WHERE`).
+	database.ExpectQuery(`SELECT id, email, name FROM subscriptions WHERE`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name"}).
@@ -138,8 +154,8 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 
 	// tests
 	app := spawn_app(router, request)
-	defer db.ExpectationsWereMet()
-	defer db.Close(app.context)
+	defer database.ExpectationsWereMet()
+	defer database.Close(app.context)
 
 	if status := app.recorder.Code; status != http.StatusFound {
 		t.Errorf("Expected status code %v, but got %v", http.StatusFound, status)
@@ -155,11 +171,16 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 
 func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 	// initialization
-	db, e := spawn_mock_database()
+	database, e := spawn_mock_database()
 	if e != nil {
 		t.Fatal(e)
 	}
-	router := spawn_mock_router(db)
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
 
 	// Non-UUID ID
 	mock_id := "1"
@@ -169,7 +190,7 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	db.ExpectQuery(`SELECT id, email, name FROM subscriptions WHERE`).
+	database.ExpectQuery(`SELECT id, email, name FROM subscriptions WHERE`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name"}).
@@ -178,8 +199,8 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 
 	// tests
 	app := spawn_app(router, request)
-	defer db.ExpectationsWereMet()
-	defer db.Close(app.context)
+	defer database.ExpectationsWereMet()
+	defer database.Close(app.context)
 
 	if status := app.recorder.Code; status != http.StatusBadRequest {
 		t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
@@ -195,11 +216,16 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 
 func Test_Subscribe(t *testing.T) {
 	// initialization
-	db, e := spawn_mock_database()
+	database, e := spawn_mock_database()
 	if e != nil {
 		t.Fatal(e)
 	}
-	router := spawn_mock_router(db)
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
 
 	data := `{"email": "test@test.com", "name": "Test User"}`
 	request, e := http.NewRequest("POST", "/subscribe", strings.NewReader(data))
@@ -207,13 +233,13 @@ func Test_Subscribe(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	db.ExpectExec("INSERT INTO subscriptions").
+	database.ExpectExec("INSERT INTO subscriptions").
 		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
 	app := spawn_app(router, request)
-	defer db.ExpectationsWereMet()
-	defer db.Close(app.context)
+	defer database.ExpectationsWereMet()
+	defer database.Close(app.context)
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusCreated {
@@ -229,11 +255,16 @@ func Test_Subscribe(t *testing.T) {
 
 func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 	// initialization
-	db, e := spawn_mock_database()
+	database, e := spawn_mock_database()
 	if e != nil {
 		t.Fatal(e)
 	}
-	router := spawn_mock_router(db)
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
 
 	var test_cases []string
 	test_cases = append(test_cases,
@@ -250,12 +281,12 @@ func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 			t.Fatal(e)
 		}
 
-		db.ExpectExec("INSERT INTO subscriptions").
+		database.ExpectExec("INSERT INTO subscriptions").
 			WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg())
 
 		app := spawn_app(router, request)
-		defer db.ExpectationsWereMet()
-		defer db.Close(app.context)
+		defer database.ExpectationsWereMet()
+		defer database.Close(app.context)
 
 		// tests
 		if status := app.recorder.Code; status != http.StatusBadRequest {
@@ -272,11 +303,16 @@ func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 
 func TestSubscribeInvalidNameFails(t *testing.T) {
 	// initialization
-	db, e := spawn_mock_database()
+	database, e := spawn_mock_database()
 	if e != nil {
 		t.Fatal(e)
 	}
-	router := spawn_mock_router(db)
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
 
 	var test_cases []string
 	test_cases = append(test_cases,
@@ -297,12 +333,12 @@ func TestSubscribeInvalidNameFails(t *testing.T) {
 			t.Fatal(e)
 		}
 
-		db.ExpectExec("INSERT INTO subscriptions").
+		database.ExpectExec("INSERT INTO subscriptions").
 			WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg())
 
 		app := spawn_app(router, request)
-		defer db.ExpectationsWereMet()
-		defer db.Close(app.context)
+		defer database.ExpectationsWereMet()
+		defer database.Close(app.context)
 
 		// tests
 		if status := app.recorder.Code; status != http.StatusBadRequest {
@@ -319,11 +355,16 @@ func TestSubscribeInvalidNameFails(t *testing.T) {
 
 func Test_Subscribe_MaxLengthParameters_Fails(t *testing.T) {
 	// initialization
-	db, e := spawn_mock_database()
+	database, e := spawn_mock_database()
 	if e != nil {
 		t.Fatal(e)
 	}
-	router := spawn_mock_router(db)
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
 
 	long_email := "a" + strings.Repeat("a", 100) + "@test.com"
 	long_name := "a" + strings.Repeat("a", 100)
@@ -348,12 +389,12 @@ func Test_Subscribe_MaxLengthParameters_Fails(t *testing.T) {
 			t.Fatal(e)
 		}
 
-		db.ExpectExec("INSERT INTO subscriptions").
+		database.ExpectExec("INSERT INTO subscriptions").
 			WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg())
 
 		app := spawn_app(router, request)
-		defer db.ExpectationsWereMet()
-		defer db.Close(app.context)
+		defer database.ExpectationsWereMet()
+		defer database.Close(app.context)
 
 		// tests
 		if status := app.recorder.Code; status != http.StatusBadRequest {
@@ -377,13 +418,24 @@ func spawn_mock_database() (pgxmock.PgxConnIface, error) {
 	return mock_db, nil
 }
 
-func spawn_mock_router(db pgxmock.PgxConnIface) *gin.Engine {
+func spawn_mock_smtp_client() (*clients.SMTPClient, error) {
+	client, e := clients.NewSMTPClient("../api/configs/dev.yaml")
+	if e != nil {
+		return nil, e
+	}
+
+	return client, nil
+}
+
+func spawn_mock_router(db pgxmock.PgxConnIface, client *clients.SMTPClient) *gin.Engine {
 	rh := handlers.NewRouteHandler(db)
 
 	router := gin.Default()
-	router.POST("/subscribe", rh.Subscribe)
 	router.GET("/subscribers", rh.GetSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
+	router.POST("/subscribe", func(c *gin.Context) {
+		rh.Subscribe(c, client)
+	})
 
 	return router
 }

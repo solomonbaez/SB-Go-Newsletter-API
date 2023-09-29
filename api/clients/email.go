@@ -27,8 +27,8 @@ type Message struct {
 	Html      string
 }
 
-func NewSMTPClient() (*SMTPClient, error) {
-	cfg, e := configs.ConfigureEmailClient()
+func NewSMTPClient(file string) (*SMTPClient, error) {
+	cfg, e := configs.ConfigureEmailClient(file)
 	if e != nil {
 		return nil, e
 	}
