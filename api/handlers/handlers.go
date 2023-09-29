@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog/log"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/email"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
@@ -36,13 +36,13 @@ type Loader struct {
 	Name  string `json:"name"`
 }
 
-func (rh RouteHandler) Subscribe(c *gin.Context, client email.EmailClient) {
+func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
 	var subscriber models.Subscriber
 	var loader Loader
 
 	requestID := c.GetString("requestID")
 
-	id := uuid.NewString()
+	newID := uuid.NewString()
 	created := time.Now()
 
 	if e := c.ShouldBindJSON(&loader); e != nil {
@@ -55,13 +55,13 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client email.EmailClient) {
 		Str("requestID", requestID).
 		Msg("Validating inputs...")
 
-	s, e := models.ParseEmail(loader.Email)
+	subscriberEmail, e := models.ParseEmail(loader.Email)
 	if e != nil {
 		response := "Could not subscribe"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
-	n, e := models.ParseName(loader.Name)
+	subscriberName, e := models.ParseName(loader.Name)
 	if e != nil {
 		response := "Could not subscribe"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
@@ -69,8 +69,8 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client email.EmailClient) {
 	}
 
 	subscriber = models.Subscriber{
-		Email: s,
-		Name:  n,
+		Email: subscriberEmail,
+		Name:  subscriberName,
 	}
 
 	// correlate request with inputs
@@ -85,14 +85,14 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client email.EmailClient) {
 		Msg("Subscribing...")
 
 	query := "INSERT INTO subscriptions (id, email, name, created) VALUES ($1, $2, $3, $4)"
-	_, e = rh.DB.Exec(c, query, id, subscriber.Email.String(), subscriber.Name.String(), created)
+	_, e = rh.DB.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), created)
 	if e != nil {
 		response := "Failed to subscribe"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
 
-	devMessage := email.Message{
+	devMessage := clients.Message{
 		Recipient: subscriber.Email,
 		Subject:   "Testing",
 		Text:      "Testing",

@@ -1,4 +1,4 @@
-package email
+package clients
 
 import (
 	"github.com/gin-gonic/gin"

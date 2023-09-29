@@ -20,8 +20,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/semconv/v1.18.0"
 
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/email"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
@@ -36,7 +36,7 @@ const baseUrl = "localhost"
 var readHeaderTimeout = 5 * time.Second
 
 var app *App
-var client *email.SMTPClient
+var client *clients.SMTPClient
 
 func init() {
 	cfg, e := configs.ConfigureApp()
@@ -52,7 +52,7 @@ func init() {
 		cfg.Port,
 	}
 
-	client, e = email.NewSMTPClient()
+	client, e = clients.NewSMTPClient()
 	if e != nil {
 		log.Fatal().
 			Err(e).
