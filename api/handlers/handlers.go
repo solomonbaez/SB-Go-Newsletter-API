@@ -16,6 +16,14 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
+const confirmationLink = "www.test.com"
+
+var confirmation = &clients.Message{
+	Subject: "Confirm Your Subscription!",
+	Text:    fmt.Sprintf("Welcome to our newsletter, please follow the link to confirm: %v", confirmationLink),
+	Html:    fmt.Sprintf("<p>Welcome to our newsletter, please follow the link to confirm: %v</p>", confirmationLink),
+}
+
 type Database interface {
 	Exec(c context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
 	Query(c context.Context, sql string, args ...interface{}) (pgx.Rows, error)
@@ -39,7 +47,7 @@ type Loader struct {
 
 var loader *Loader
 
-func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
+func (rh RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	var subscriber *models.Subscriber
 
 	requestID := c.GetString("requestID")
@@ -99,16 +107,13 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
 		return
 	}
 
-	devMessage := &clients.Message{
-		Recipient: subscriber.Email,
-		Subject:   "Testing",
-		Text:      "Testing",
-		Html:      "<h1>Testing</h1>",
-	}
-	if e = client.SendEmail(c, devMessage); e != nil {
-		response = "Failed to send confirmation email"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
-		return
+	if client.SmtpServer != "test" {
+		confirmation.Recipient = subscriber.Email
+		if e := client.SendEmail(c, confirmation); e != nil {
+			response = "Failed to send confirmation email"
+			HandleError(c, requestID, e, response, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	log.Info().
