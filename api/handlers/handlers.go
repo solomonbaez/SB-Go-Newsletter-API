@@ -75,8 +75,9 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client clients.EmailClient) {
 	}
 
 	subscriber = &models.Subscriber{
-		Email: subscriberEmail,
-		Name:  subscriberName,
+		Email:  subscriberEmail,
+		Name:   subscriberName,
+		Status: status,
 	}
 
 	// correlate request with inputs
@@ -180,7 +181,7 @@ func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
 		Msg("Fetching subscriber...")
 
 	var subscriber models.Subscriber
-	e = rh.DB.QueryRow(c, "SELECT id, email, name FROM subscriptions WHERE id=$1", id).Scan(&subscriber.ID, &subscriber.Email, &subscriber.Name)
+	e = rh.DB.QueryRow(c, "SELECT id, email, name, status FROM subscriptions WHERE id=$1", id).Scan(&subscriber.ID, &subscriber.Email, &subscriber.Name, &subscriber.Status)
 	if e != nil {
 		if e == pgx.ErrNoRows {
 			response = "Subscriber not found"

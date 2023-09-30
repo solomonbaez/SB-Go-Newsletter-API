@@ -66,7 +66,7 @@ func Test_GetSubscribers_NoSubscribers_Passes(t *testing.T) {
 	}
 
 	database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
-		pgxmock.NewRows([]string{"id", "email", "name", "created"}),
+		pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}),
 	)
 
 	app := spawn_app(router, request)
@@ -105,8 +105,8 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 
 	mock_id := uuid.NewString()
 	database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
-		pgxmock.NewRows([]string{"id", "email", "name", "created"}).
-			AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User"), time.Now()),
+		pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
+			AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User"), time.Now(), "pending"),
 	)
 
 	app := spawn_app(router, request)
@@ -118,7 +118,7 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
 	}
 
-	expected_body := fmt.Sprintf(`{"requestID":"","subscribers":[{"id":"%v","email":"test@test.com","name":"Test User"}]}`, mock_id)
+	expected_body := fmt.Sprintf(`{"requestID":"","subscribers":[{"id":"%v","email":"test@test.com","name":"Test User","status":"pending"}]}`, mock_id)
 	response_body := app.recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
@@ -145,11 +145,11 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	database.ExpectQuery(`SELECT id, email, name FROM subscriptions WHERE`).
+	database.ExpectQuery(`SELECT id, email, name, status FROM subscriptions WHERE`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "email", "name"}).
-				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User")),
+			pgxmock.NewRows([]string{"id", "email", "name", "status"}).
+				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User"), "pending"),
 		)
 
 	// tests
@@ -161,7 +161,7 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusFound, status)
 	}
 
-	expected_body := fmt.Sprintf(`{"requestID":"","subscriber":{"id":"%v","email":"test@test.com","name":"Test User"}}`, mock_id)
+	expected_body := fmt.Sprintf(`{"requestID":"","subscriber":{"id":"%v","email":"test@test.com","name":"Test User","status":"pending"}}`, mock_id)
 	response_body := app.recorder.Body.String()
 
 	if response_body != expected_body {
@@ -234,7 +234,7 @@ func Test_Subscribe(t *testing.T) {
 	}
 
 	database.ExpectExec("INSERT INTO subscriptions").
-		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
 	app := spawn_app(router, request)
@@ -246,7 +246,7 @@ func Test_Subscribe(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusCreated, status)
 	}
 
-	expected_body := `{"requestID":"","subscriber":{"id":"","email":"test@test.com","name":"Test User"}}`
+	expected_body := `{"requestID":"","subscriber":{"id":"","email":"test@test.com","name":"Test User","status":"pending"}}`
 	response_body := app.recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
