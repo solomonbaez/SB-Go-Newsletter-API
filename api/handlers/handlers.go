@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -17,6 +18,11 @@ import (
 )
 
 const confirmationLink = "www.test.com"
+const tokenLength = 25
+const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+// generate new random seed
+var seed *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 var confirmation = &clients.Message{
 	Subject: "Confirm Your Subscription!",
@@ -107,9 +113,10 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 		return
 	}
 
+	token := generateToken()
 	if client.SmtpServer != "test" {
 		confirmation.Recipient = subscriber.Email
-		if e := client.SendEmail(c, confirmation); e != nil {
+		if e := client.SendEmail(c, confirmation, token); e != nil {
 			response = "Failed to send confirmation email"
 			HandleError(c, requestID, e, response, http.StatusInternalServerError)
 			return
@@ -220,6 +227,15 @@ func BuildSubscriber(row pgx.CollectableRow) (*models.Subscriber, error) {
 	}
 
 	return s, e
+}
+
+func generateToken() string {
+	b := make([]byte, tokenLength)
+	for i := range b {
+		b[i] = charset[seed.Intn(len(charset))]
+	}
+
+	return string(b)
 }
 
 func HandleError(c *gin.Context, id string, e error, response string, status int) {

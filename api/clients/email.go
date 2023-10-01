@@ -51,7 +51,7 @@ func NewSMTPClient(file string) (*SMTPClient, error) {
 	return client, nil
 }
 
-func (client *SMTPClient) SendEmail(c *gin.Context, message *Message) error {
+func (client *SMTPClient) SendEmail(c *gin.Context, message *Message, token string) error {
 	requestID := c.GetString("requestID")
 
 	m := gomail.NewMessage()
