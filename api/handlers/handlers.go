@@ -53,7 +53,7 @@ type Loader struct {
 
 var loader *Loader
 
-func (rh RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
+func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	var subscriber *models.Subscriber
 
 	requestID := c.GetString("requestID")
@@ -123,6 +123,12 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 		}
 	}
 
+	if e := rh.storeToken(c, newID, token); e != nil {
+		response = "Failed to store user token"
+		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
+
 	log.Info().
 		Str("requestID", requestID).
 		Str("email", subscriber.Email.String()).
@@ -131,7 +137,7 @@ func (rh RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	c.JSON(http.StatusCreated, gin.H{"requestID": requestID, "subscriber": subscriber})
 }
 
-func (rh RouteHandler) GetSubscribers(c *gin.Context) {
+func (rh *RouteHandler) GetSubscribers(c *gin.Context) {
 	var subscribers []*models.Subscriber
 	requestID := c.GetString("requestID")
 
@@ -169,7 +175,7 @@ func (rh RouteHandler) GetSubscribers(c *gin.Context) {
 	}
 }
 
-func (rh RouteHandler) GetSubscriberByID(c *gin.Context) {
+func (rh *RouteHandler) GetSubscriberByID(c *gin.Context) {
 	requestID := c.GetString("requestID")
 
 	var response string
@@ -211,6 +217,24 @@ func HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, "OK")
 }
 
+func (rh *RouteHandler) storeToken(c *gin.Context, id string, token string) error {
+	query := "INSERT INTO subscription_tokens (subscription_token, subscriber_id) VALUES ($1, $2)"
+	_, e := rh.DB.Exec(c, query, token, id)
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
+func generateToken() string {
+	b := make([]byte, tokenLength)
+	for i := range b {
+		b[i] = charset[seed.Intn(len(charset))]
+	}
+
+	return string(b)
+}
+
 func BuildSubscriber(row pgx.CollectableRow) (*models.Subscriber, error) {
 	var id string
 	var email models.SubscriberEmail
@@ -227,15 +251,6 @@ func BuildSubscriber(row pgx.CollectableRow) (*models.Subscriber, error) {
 	}
 
 	return s, e
-}
-
-func generateToken() string {
-	b := make([]byte, tokenLength)
-	for i := range b {
-		b[i] = charset[seed.Intn(len(charset))]
-	}
-
-	return string(b)
 }
 
 func HandleError(c *gin.Context, id string, e error, response string, status int) {
