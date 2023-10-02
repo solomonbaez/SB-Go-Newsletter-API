@@ -237,6 +237,10 @@ func Test_Subscribe(t *testing.T) {
 		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
+	database.ExpectExec("INSERT INTO subscription_tokens").
+		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
 	app := spawn_app(router, request)
 	defer database.ExpectationsWereMet()
 	defer database.Close(app.context)
