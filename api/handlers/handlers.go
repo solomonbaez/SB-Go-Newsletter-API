@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -21,9 +22,6 @@ import (
 const baseURL = "http://localhost:8000"
 const tokenLength = 25
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-// generate new random seed
-var seed *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 var confirmationLink string
 var confirmation = &clients.Message{
@@ -75,7 +73,6 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	defer tx.Rollback(c)
 
 	if e = c.ShouldBindJSON(&loader); e != nil {
-		tx.Rollback(c)
 		response = "Could not subscribe"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
@@ -87,7 +84,6 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 
 	subscriberEmail, e := models.ParseEmail(loader.Email)
 	if e != nil {
-		tx.Rollback(c)
 		response = "Could not subscribe"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
@@ -124,9 +120,12 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 		return
 	}
 
-	token := generateToken()
-	// dev
-	// fmt.Printf(token)
+	token, e := generateCSPRNG()
+	if e != nil {
+		response = "Failed to generate token"
+		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
 
 	if client.SmtpServer != "test" {
 		confirmationLink = fmt.Sprintf("%v/%v", baseURL, token)
@@ -273,17 +272,26 @@ func (rh *RouteHandler) storeToken(c *gin.Context, tx pgx.Tx, id string, token s
 		return e
 	}
 
+	// commit changes
 	tx.Commit(c)
 	return nil
 }
 
-func generateToken() string {
+func generateCSPRNG() (string, error) {
 	b := make([]byte, tokenLength)
+
+	maxIndex := big.NewInt(int64(len(charset)))
+
 	for i := range b {
-		b[i] = charset[seed.Intn(len(charset))]
+		r, e := rand.Int(rand.Reader, maxIndex)
+		if e != nil {
+			return "", e
+		}
+
+		b[i] = charset[r.Int64()]
 	}
 
-	return string(b)
+	return string(b), nil
 }
 
 func BuildSubscriber(row pgx.CollectableRow) (*models.Subscriber, error) {
