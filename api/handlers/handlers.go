@@ -261,6 +261,44 @@ func (rh *RouteHandler) GetSubscriberByID(c *gin.Context) {
 	c.JSON(http.StatusFound, gin.H{"requestID": requestID, "subscriber": subscriber})
 }
 
+func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) {
+	var subscribers []*models.Subscriber
+	requestID := c.GetString("requestID")
+
+	var response string
+	var e error
+
+	log.Info().
+		Str("requestID", requestID).
+		Msg("Fetching confirmed subscribers...")
+
+	rows, e := rh.DB.Query(c, "SELECT * FROM subscriptions WHERE status=$1", "confirmed")
+	if e != nil {
+		response = "Failed to fetch confirmed subscribers"
+		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	subscribers, e = pgx.CollectRows[*models.Subscriber](rows, BuildSubscriber)
+	if e != nil {
+		response = "Failed to parse confirmed subscribers"
+		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
+
+	if len(subscribers) > 0 {
+		c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": subscribers})
+	} else {
+		response = "No confirmed subscribers"
+		log.Info().
+			Str("requestID", requestID).
+			Msg(response)
+
+		c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": response})
+	}
+}
+
 func HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, "OK")
 }
