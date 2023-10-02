@@ -114,11 +114,13 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	}
 
 	token := generateToken()
-	if client.SmtpServer == "test" {
+	// dev
+	// fmt.Printf(token)
+
+	if client.SmtpServer != "test" {
 		confirmationLink = fmt.Sprintf("%v/%v", baseURL, token)
 		confirmation.Text = fmt.Sprintf("Welcome to our newsletter! Please confirm your subscription at: %v", confirmationLink)
 		confirmation.Html = fmt.Sprintf("<p>Welcome to our newsletter! Please confirm your subscription at: <a>%v</a></p>", confirmationLink)
-		fmt.Printf(confirmation.Text)
 
 		confirmation.Recipient = subscriber.Email
 		if e := client.SendEmail(c, confirmation, token); e != nil {
@@ -169,6 +171,8 @@ func (rh *RouteHandler) ConfirmSubscriber(c *gin.Context) {
 
 	log.Info().
 		Msg("Subscription confirmed")
+
+	c.JSON(http.StatusAccepted, gin.H{"requestID": requestID, "subscriber": "Subscription confirmed"})
 }
 
 func (rh *RouteHandler) GetSubscribers(c *gin.Context) {

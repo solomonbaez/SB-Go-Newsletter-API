@@ -160,6 +160,7 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	router.GET("/subscribers", rh.GetSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
 	router.POST("/subscribe", func(c *gin.Context) { rh.Subscribe(c, client) })
+	router.GET("/confirm/:token", rh.ConfirmSubscriber)
 
 	// listener
 	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", app.port))
