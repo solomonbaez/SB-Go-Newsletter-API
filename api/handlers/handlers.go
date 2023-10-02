@@ -17,17 +17,17 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
-const confirmationLink = "www.test.com"
+// TODO switch to cfg baseURL
+const baseURL = "http://localhost:8000"
 const tokenLength = 25
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 // generate new random seed
 var seed *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
+var confirmationLink string
 var confirmation = &clients.Message{
 	Subject: "Confirm Your Subscription!",
-	Text:    fmt.Sprintf("Welcome to our newsletter, please follow the link to confirm: %v", confirmationLink),
-	Html:    fmt.Sprintf("<p>Welcome to our newsletter, please follow the link to confirm: %v</p>", confirmationLink),
 }
 
 type Database interface {
@@ -114,7 +114,12 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	}
 
 	token := generateToken()
-	if client.SmtpServer != "test" {
+	if client.SmtpServer == "test" {
+		confirmationLink = fmt.Sprintf("%v/%v", baseURL, token)
+		confirmation.Text = fmt.Sprintf("Welcome to our newsletter! Please confirm your subscription at: %v", confirmationLink)
+		confirmation.Html = fmt.Sprintf("<p>Welcome to our newsletter! Please confirm your subscription at: <a>%v</a></p>", confirmationLink)
+		fmt.Printf(confirmation.Text)
+
 		confirmation.Recipient = subscriber.Email
 		if e := client.SendEmail(c, confirmation, token); e != nil {
 			response = "Failed to send confirmation email"
@@ -132,9 +137,38 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	log.Info().
 		Str("requestID", requestID).
 		Str("email", subscriber.Email.String()).
-		Msg(fmt.Sprintf("Success, %v subscribed!", subscriber.Email.String()))
+		Msg(fmt.Sprintf("Success, sent a confirmation email to %v", subscriber.Email.String()))
 
 	c.JSON(http.StatusCreated, gin.H{"requestID": requestID, "subscriber": subscriber})
+}
+
+func (rh *RouteHandler) ConfirmSubscriber(c *gin.Context) {
+	var id string
+	var query string
+	var response string
+	var e error
+
+	requestID := c.GetString("requestID")
+	token := c.Param("token")
+
+	query = "SELECT (subscriber_id) FROM subscription_tokens WHERE subscription_token = $1"
+	e = rh.DB.QueryRow(c, query, token).Scan(&id)
+	if e != nil {
+		response = "Failed to fetch subscriber ID"
+		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
+
+	query = "UPDATE subscriptions SET status = 'confirmed' WHERE id = $1"
+	_, e = rh.DB.Exec(c, query, id)
+	if e != nil {
+		response = "Failed to confirm subscription"
+		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
+
+	log.Info().
+		Msg("Subscription confirmed")
 }
 
 func (rh *RouteHandler) GetSubscribers(c *gin.Context) {
