@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
@@ -20,10 +21,6 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	var subscriber *models.Subscriber
 
 	requestID := c.GetString("requestID")
-
-	newID := uuid.NewString()
-	created := time.Now()
-	status := "pending"
 
 	var response string
 	var e error
@@ -62,7 +59,7 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	subscriber = &models.Subscriber{
 		Email:  subscriberEmail,
 		Name:   subscriberName,
-		Status: status,
+		Status: "pending",
 	}
 
 	// correlate request with inputs
@@ -70,25 +67,36 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 		Str("requestID", requestID).
 		Str("email", subscriber.Email.String()).
 		Str("name", subscriber.Name.String()).
-		Msg("")
+		Msg("Subscribing...")
+
+	if e := insertSubscriber(c, client, tx, *subscriber); e != nil {
+		response = "Failed to insert subscriber"
+		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+	}
 
 	log.Info().
 		Str("requestID", requestID).
-		Msg("Subscribing...")
+		Str("email", subscriber.Email.String()).
+		Msg(fmt.Sprintf("Success, sent a confirmation email to %v", subscriber.Email.String()))
+
+	c.JSON(http.StatusCreated, gin.H{"requestID": requestID, "subscriber": subscriber})
+}
+
+func insertSubscriber(c *gin.Context, client *clients.SMTPClient, tx pgx.Tx, subscriber models.Subscriber) error {
+	var e error
+
+	newID := uuid.NewString()
+	created := time.Now()
 
 	query := "INSERT INTO subscriptions (id, email, name, created, status) VALUES ($1, $2, $3, $4, $5)"
-	_, e = tx.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), created, status)
+	_, e = tx.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), created, "pending")
 	if e != nil {
-		response = "Failed to subscribe"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
-		return
+		return e
 	}
 
 	token, e := generateCSPRNG()
 	if e != nil {
-		response = "Failed to generate token"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
-		return
+		return e
 	}
 
 	if client.SmtpServer != "test" {
@@ -99,22 +107,13 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 
 		confirmation.Recipient = subscriber.Email
 		if e := client.SendEmail(c, confirmation); e != nil {
-			response = "Failed to send confirmation email"
-			HandleError(c, requestID, e, response, http.StatusInternalServerError)
-			return
+			return e
 		}
 	}
 
-	if e := rh.storeToken(c, tx, newID, token); e != nil {
-		response = "Failed to store user token"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
-		return
+	if e := storeToken(c, tx, newID, token); e != nil {
+		return e
 	}
 
-	log.Info().
-		Str("requestID", requestID).
-		Str("email", subscriber.Email.String()).
-		Msg(fmt.Sprintf("Success, sent a confirmation email to %v", subscriber.Email.String()))
-
-	c.JSON(http.StatusCreated, gin.H{"requestID": requestID, "subscriber": subscriber})
+	return nil
 }
