@@ -1,6 +1,6 @@
 package models
 
-type Newsletter struct {
+type NewsletterBody struct {
 	Title   string
 	Content content
 }

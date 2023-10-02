@@ -158,7 +158,6 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/subscribers", rh.GetSubscribers)
-	router.GET("/subscribers/confirmed", rh.GetConfirmedSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
 	router.POST("/subscribe", func(c *gin.Context) { rh.Subscribe(c, client) })
 	router.GET("/confirm/:token", rh.ConfirmSubscriber)

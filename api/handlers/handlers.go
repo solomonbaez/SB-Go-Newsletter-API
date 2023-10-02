@@ -52,6 +52,15 @@ type Loader struct {
 
 var loader *Loader
 
+func (rh *RouteHandler) PostNewsletter(c *gin.Context, client *clients.SMTPClient) {
+	// var body models.NewsletterBody
+
+	subscribers := rh.GetConfirmedSubscribers(c)
+	for _, s := range subscribers {
+		fmt.Printf(s.Email.String())
+	}
+}
+
 func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	var subscriber *models.Subscriber
 
@@ -261,7 +270,7 @@ func (rh *RouteHandler) GetSubscriberByID(c *gin.Context) {
 	c.JSON(http.StatusFound, gin.H{"requestID": requestID, "subscriber": subscriber})
 }
 
-func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) {
+func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) []*models.Subscriber {
 	var subscribers []*models.Subscriber
 	requestID := c.GetString("requestID")
 
@@ -276,7 +285,7 @@ func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) {
 	if e != nil {
 		response = "Failed to fetch confirmed subscribers"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
-		return
+		return nil
 	}
 	defer rows.Close()
 
@@ -284,11 +293,12 @@ func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) {
 	if e != nil {
 		response = "Failed to parse confirmed subscribers"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
-		return
+		return nil
 	}
 
 	if len(subscribers) > 0 {
 		c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": subscribers})
+		return subscribers
 	} else {
 		response = "No confirmed subscribers"
 		log.Info().
@@ -296,6 +306,7 @@ func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) {
 			Msg(response)
 
 		c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": response})
+		return nil
 	}
 }
 
