@@ -72,8 +72,10 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
+	defer tx.Rollback(c)
 
 	if e = c.ShouldBindJSON(&loader); e != nil {
+		tx.Rollback(c)
 		response = "Could not subscribe"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
@@ -85,6 +87,7 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 
 	subscriberEmail, e := models.ParseEmail(loader.Email)
 	if e != nil {
+		tx.Rollback(c)
 		response = "Could not subscribe"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
@@ -269,6 +272,8 @@ func (rh *RouteHandler) storeToken(c *gin.Context, tx pgx.Tx, id string, token s
 	if e != nil {
 		return e
 	}
+
+	tx.Commit(c)
 	return nil
 }
 
