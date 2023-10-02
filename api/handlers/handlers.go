@@ -24,9 +24,7 @@ const tokenLength = 25
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 var confirmationLink string
-var confirmation = &clients.Message{
-	Subject: "Confirm Your Subscription!",
-}
+var confirmation = &models.Newsletter{}
 
 type Database interface {
 	Exec(c context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
@@ -53,12 +51,37 @@ type Loader struct {
 var loader *Loader
 
 func (rh *RouteHandler) PostNewsletter(c *gin.Context, client *clients.SMTPClient) {
-	// var body models.NewsletterBody
+	var newsletter models.Newsletter
+	var body models.Body
+	var response string
+	var e error
+
+	requestID := c.GetString("requestID")
+
+	if e = c.ShouldBindJSON(&body); e != nil {
+		response = "Could not send newsletter"
+		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
+	newsletter.Content = &body
 
 	subscribers := rh.GetConfirmedSubscribers(c)
 	for _, s := range subscribers {
-		fmt.Printf(s.Email.String())
+		// re-parse email to ensure data integrity
+		newsletter.Recipient, e = models.ParseEmail(s.Email.String())
+		if e != nil {
+			response = "Invalid email"
+			HandleError(c, requestID, e, response, http.StatusConflict)
+			continue
+		}
+		if e = client.SendEmail(c, &newsletter); e != nil {
+			response = "Could not send newsletter"
+			HandleError(c, requestID, e, response, http.StatusInternalServerError)
+			continue
+		}
 	}
+
+	c.JSON(http.StatusOK, gin.H{"requestID": requestID, "message": "Emails successfully delivered"})
 }
 
 func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
@@ -138,11 +161,12 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 
 	if client.SmtpServer != "test" {
 		confirmationLink = fmt.Sprintf("%v/%v", baseURL, token)
-		confirmation.Text = fmt.Sprintf("Welcome to our newsletter! Please confirm your subscription at: %v", confirmationLink)
-		confirmation.Html = fmt.Sprintf("<p>Welcome to our newsletter! Please confirm your subscription at: <a>%v</a></p>", confirmationLink)
+		confirmation.Content.Title = "Please confirm your subscription"
+		confirmation.Content.Text = fmt.Sprintf("Welcome to our newsletter! Please confirm your subscription at: %v", confirmationLink)
+		confirmation.Content.Html = fmt.Sprintf("<p>Welcome to our newsletter! Please confirm your subscription at: <a>%v</a></p>", confirmationLink)
 
 		confirmation.Recipient = subscriber.Email
-		if e := client.SendEmail(c, confirmation, token); e != nil {
+		if e := client.SendEmail(c, confirmation); e != nil {
 			response = "Failed to send confirmation email"
 			HandleError(c, requestID, e, response, http.StatusInternalServerError)
 			return
@@ -221,6 +245,16 @@ func (rh *RouteHandler) GetSubscribers(c *gin.Context) {
 	}
 
 	if len(subscribers) > 0 {
+		for _, s := range subscribers {
+			// re-parse email to ensure data integrity
+			s.Email, e = models.ParseEmail(s.Email.String())
+			if e != nil {
+				response = "Failed to parse subscriber"
+				HandleError(c, requestID, e, response, http.StatusInternalServerError)
+				continue
+			}
+		}
+
 		c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": subscribers})
 	} else {
 		response = "No subscribers"
@@ -267,6 +301,13 @@ func (rh *RouteHandler) GetSubscriberByID(c *gin.Context) {
 		return
 	}
 
+	subscriber.Email, e = models.ParseEmail(subscriber.Email.String())
+	if e != nil {
+		response = "Invalid email"
+		HandleError(c, requestID, e, response, http.StatusConflict)
+		return
+	}
+
 	c.JSON(http.StatusFound, gin.H{"requestID": requestID, "subscriber": subscriber})
 }
 
@@ -297,6 +338,14 @@ func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) []*models.Subscri
 	}
 
 	if len(subscribers) > 0 {
+		for _, s := range subscribers {
+			s.Email, e = models.ParseEmail(s.Email.String())
+			if e != nil {
+				response = "Invalid email"
+				HandleError(c, requestID, e, response, http.StatusConflict)
+				return nil
+			}
+		}
 		c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": subscribers})
 		return subscribers
 	} else {

@@ -9,7 +9,7 @@ import (
 )
 
 type EmailClient interface {
-	SendEmail(c *gin.Context, email *Message) error
+	SendEmail(c *gin.Context, email *models.Newsletter) error
 }
 
 type SMTPClient struct {
@@ -18,13 +18,6 @@ type SMTPClient struct {
 	smtpUsername string
 	smtpPassword string
 	sender       models.SubscriberEmail
-}
-
-type Message struct {
-	Recipient models.SubscriberEmail
-	Subject   string
-	Text      string
-	Html      string
 }
 
 func NewSMTPClient(file string) (*SMTPClient, error) {
@@ -51,20 +44,20 @@ func NewSMTPClient(file string) (*SMTPClient, error) {
 	return client, nil
 }
 
-func (client *SMTPClient) SendEmail(c *gin.Context, message *Message, token string) error {
+func (client *SMTPClient) SendEmail(c *gin.Context, newsletter *models.Newsletter) error {
 	requestID := c.GetString("requestID")
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", client.sender.String())
-	m.SetHeader("To", message.Recipient.String())
-	m.SetHeader("Subject", message.Subject)
-	m.SetBody("text/plain", message.Text)
-	m.AddAlternative("text/html", message.Html)
+	m.SetHeader("To", newsletter.Recipient.String())
+	m.SetHeader("Subject", newsletter.Content.Title)
+	m.SetBody("text/plain", newsletter.Content.Text)
+	m.AddAlternative("text/html", newsletter.Content.Html)
 
 	log.Info().
 		Str("requestID", requestID).
 		Str("sender", client.sender.String()).
-		Str("recipient", message.Recipient.String()).
+		Str("recipient", newsletter.Recipient.String()).
 		Msg("Attempting to send an email...")
 
 	dialer := gomail.NewDialer(client.SmtpServer, client.smtpPort, client.smtpUsername, client.smtpPassword)
@@ -79,7 +72,7 @@ func (client *SMTPClient) SendEmail(c *gin.Context, message *Message, token stri
 	log.Info().
 		Str("requestID", requestID).
 		Str("sender", client.sender.String()).
-		Str("recipient", message.Recipient.String()).
+		Str("recipient", newsletter.Recipient.String()).
 		Msg("Email sent")
 
 	return nil
