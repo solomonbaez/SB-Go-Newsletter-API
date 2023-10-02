@@ -34,6 +34,7 @@ type Database interface {
 	Exec(c context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
 	Query(c context.Context, sql string, args ...interface{}) (pgx.Rows, error)
 	QueryRow(c context.Context, sql string, args ...interface{}) pgx.Row
+	Begin(c context.Context) (pgx.Tx, error)
 }
 
 type RouteHandler struct {
@@ -64,6 +65,13 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 
 	var response string
 	var e error
+
+	tx, e := rh.DB.Begin(c)
+	if e != nil {
+		response = "Failed to begin transaction"
+		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
 
 	if e = c.ShouldBindJSON(&loader); e != nil {
 		response = "Could not subscribe"
@@ -106,7 +114,7 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 		Msg("Subscribing...")
 
 	query := "INSERT INTO subscriptions (id, email, name, created, status) VALUES ($1, $2, $3, $4, $5)"
-	_, e = rh.DB.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), created, status)
+	_, e = tx.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), created, status)
 	if e != nil {
 		response = "Failed to subscribe"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
@@ -130,7 +138,7 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 		}
 	}
 
-	if e := rh.storeToken(c, newID, token); e != nil {
+	if e := rh.storeToken(c, tx, newID, token); e != nil {
 		response = "Failed to store user token"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
@@ -255,9 +263,9 @@ func HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, "OK")
 }
 
-func (rh *RouteHandler) storeToken(c *gin.Context, id string, token string) error {
+func (rh *RouteHandler) storeToken(c *gin.Context, tx pgx.Tx, id string, token string) error {
 	query := "INSERT INTO subscription_tokens (subscription_token, subscriber_id) VALUES ($1, $2)"
-	_, e := rh.DB.Exec(c, query, token, id)
+	_, e := tx.Exec(c, query, token, id)
 	if e != nil {
 		return e
 	}
