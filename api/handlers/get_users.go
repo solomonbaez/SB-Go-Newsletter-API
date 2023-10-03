@@ -34,3 +34,18 @@ func (rh *RouteHandler) GetUsers(c *gin.Context) (gin.Accounts, error) {
 
 	return users, nil
 }
+
+func (rh *RouteHandler) ValidateCredentials(c *gin.Context, u string, p string) (*string, error) {
+	var id string
+	query := "SELECT id FROM users WHERE username=$1 AND password=$2"
+	e := rh.DB.QueryRow(c, query, u, p).Scan(&id)
+	if e != nil {
+		log.Error().
+			Err(e).
+			Msg("Failed to fetch admin users")
+
+		return nil, e
+	}
+
+	return &id, nil
+}
