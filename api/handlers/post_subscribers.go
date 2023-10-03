@@ -18,7 +18,7 @@ var confirmation = &models.Newsletter{}
 var loader *Loader
 
 func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
-	var subscriber *models.Subscriber
+	var subscriber models.Subscriber
 
 	requestID := c.GetString("requestID")
 
@@ -56,7 +56,7 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 		return
 	}
 
-	subscriber = &models.Subscriber{
+	subscriber = models.Subscriber{
 		Email:  subscriberEmail,
 		Name:   subscriberName,
 		Status: "pending",
@@ -69,7 +69,7 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 		Str("name", subscriber.Name.String()).
 		Msg("Subscribing...")
 
-	if e := insertSubscriber(c, client, tx, *subscriber); e != nil {
+	if e := insertSubscriber(c, client, tx, subscriber); e != nil {
 		response = "Failed to insert subscriber"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
 	}
@@ -100,12 +100,15 @@ func insertSubscriber(c *gin.Context, client *clients.SMTPClient, tx pgx.Tx, sub
 	}
 
 	if client.SmtpServer != "test" {
-		confirmationLink = fmt.Sprintf("%v/%v", baseURL, token)
-		confirmation.Content.Title = "Please confirm your subscription"
-		confirmation.Content.Text = fmt.Sprintf("Welcome to our newsletter! Please confirm your subscription at: %v", confirmationLink)
-		confirmation.Content.Html = fmt.Sprintf("<p>Welcome to our newsletter! Please confirm your subscription at: <a>%v</a></p>", confirmationLink)
-
 		confirmation.Recipient = subscriber.Email
+
+		confirmationLink = fmt.Sprintf("%v/%v", baseURL, token)
+		confirmation.Content = &models.Body{
+			Title: "Please confirm your subscription",
+			Text:  fmt.Sprintf("Welcome to our newsletter! Please confirm your subscription at: %v", confirmationLink),
+			Html:  fmt.Sprintf("<p>Welcome to our newsletter! Please confirm your subscription at: <a>%v</a></p>", confirmationLink),
+		}
+
 		if e := client.SendEmail(c, confirmation); e != nil {
 			return e
 		}
