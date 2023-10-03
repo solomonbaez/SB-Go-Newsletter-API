@@ -1,6 +1,8 @@
 package clients
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-gomail/gomail"
 	"github.com/rs/zerolog/log"
@@ -20,7 +22,12 @@ type SMTPClient struct {
 	sender       models.SubscriberEmail
 }
 
-func NewSMTPClient(file string) (*SMTPClient, error) {
+func NewSMTPClient(cfgFile *string) (*SMTPClient, error) {
+	var file string
+	if *cfgFile != "" {
+		file = fmt.Sprintf("./api/configs/%v.yaml", *cfgFile)
+	}
+
 	cfg, e := configs.ConfigureEmailClient(file)
 	if e != nil {
 		return nil, e

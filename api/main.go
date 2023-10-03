@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -39,7 +40,7 @@ var app *App
 var client *clients.SMTPClient
 
 func init() {
-	cfg, e := configs.ConfigureApp()
+	appCFG, e := configs.ConfigureApp()
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -48,12 +49,14 @@ func init() {
 		return
 	}
 	app = &App{
-		cfg.Database,
-		cfg.Port,
+		appCFG.Database,
+		appCFG.Port,
 	}
 
-	// "" for dev.yaml
-	client, e = clients.NewSMTPClient("")
+	cmd := flag.String("cfg", "", "")
+	flag.Parse()
+
+	client, e = clients.NewSMTPClient(cmd)
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -159,6 +162,7 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/subscribers", rh.GetSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
+	router.POST("/newsletter", func(c *gin.Context) { rh.PostNewsletter(c, client) })
 	router.POST("/subscribe", func(c *gin.Context) { rh.Subscribe(c, client) })
 	router.GET("/confirm/:token", rh.ConfirmSubscriber)
 
