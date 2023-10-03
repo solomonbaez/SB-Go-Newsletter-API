@@ -2,7 +2,9 @@ package api
 
 import (
 	"bufio"
+	"fmt"
 	"net"
+	"strings"
 	"sync"
 )
 
@@ -31,7 +33,11 @@ func (s *MockSMTPServer) Start() {
 	if e != nil {
 		panic(e)
 	}
+
+	s.lock.Lock()
 	s.Addr = listener.Addr().String()
+	s.running = true
+	s.lock.Unlock()
 
 	go func() {
 		for {
@@ -54,6 +60,12 @@ func (s *MockSMTPServer) Stop() {
 	s.wg.Wait()
 }
 
+func (s *MockSMTPServer) GetAddr() string {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.Addr
+}
+
 func (s *MockSMTPServer) handleConnection(conn net.Conn) {
 	defer func() {
 		conn.Close()
@@ -62,28 +74,37 @@ func (s *MockSMTPServer) handleConnection(conn net.Conn) {
 
 	buf := bufio.NewReader(conn)
 	var email MockEmail
+	var data string
 
 	for {
 		line, e := buf.ReadString('\n')
 		if e != nil {
 			return
 		}
+		// reamove \n
+		line = strings.TrimRight(line, "\n")
+
 		// terminator
 		if line == "." {
 			break
 		}
-		if line[:6] == "Title:" {
-			email.Title = line[7:]
-		} else if line[:5] == "Text:" {
-			email.Text = line[:6]
-		} else if line[:5] == "Html:" {
-			email.Html = line[:6]
+		if strings.HasPrefix(line, "Title:") {
+			email.Title = strings.TrimPrefix(line, "Title:")
+		} else if strings.HasPrefix(line, "Text:") {
+			email.Text = strings.TrimPrefix(line, "Text:")
+		} else if strings.HasPrefix(line, "Html:") {
+			email.Html = strings.TrimPrefix(line, "Html:")
+		} else {
+			fmt.Println("Unknown")
 		}
+
+		data += line + "\n"
 	}
 
 	s.lock.Lock()
-	defer s.lock.Unlock()
 	s.Emails = append(s.Emails, email)
+	s.lock.Unlock()
+	fmt.Printf("Recieved email:\n%s\n", data)
 }
 
 func (s *MockSMTPServer) ClearEmails() {
@@ -95,5 +116,6 @@ func (s *MockSMTPServer) ClearEmails() {
 func (s *MockSMTPServer) GetEmails() []MockEmail {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	fmt.Printf("Len: %v", len(s.Emails))
 	return s.Emails
 }

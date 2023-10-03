@@ -26,15 +26,15 @@ func (c *MockSMTPClient) SendEmail(email MockEmail) error {
 	defer conn.Close()
 
 	writer := bufio.NewWriter(conn)
-	_, e = fmt.Fprintf(writer, "Title:%s\n", email.Title)
+	_, e = fmt.Fprintf(writer, "Title: %s\n", email.Title)
 	if e != nil {
 		return e
 	}
-	_, e = fmt.Fprintf(writer, "Text:%s\n", email.Text)
+	_, e = fmt.Fprintf(writer, "Text: %s\n", email.Text)
 	if e != nil {
 		return e
 	}
-	_, e = fmt.Fprintf(writer, "Html:%s\n", email.Html)
+	_, e = fmt.Fprintf(writer, "Html: %s\n", email.Html)
 	if e != nil {
 		return e
 	}
