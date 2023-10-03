@@ -2,8 +2,8 @@ package api
 
 import (
 	"bufio"
+	"fmt"
 	"net"
-	"net/textproto"
 	"sync"
 )
 
@@ -19,6 +19,7 @@ type MockSMTPServer struct {
 	Emails  []MockEmail
 	wg      sync.WaitGroup
 	running bool
+	lock    sync.Mutex
 }
 
 // builder
@@ -61,11 +62,10 @@ func (s *MockSMTPServer) handleConnection(conn net.Conn) {
 	}()
 
 	buf := bufio.NewReader(conn)
-	reader := textproto.NewReader(buf)
 	var email MockEmail
 
 	for {
-		line, e := reader.ReadLine()
+		line, e := buf.ReadString('\n')
 		if e != nil {
 			return
 		}
@@ -82,9 +82,19 @@ func (s *MockSMTPServer) handleConnection(conn net.Conn) {
 		}
 	}
 
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	s.Emails = append(s.Emails, email)
 }
 
 func (s *MockSMTPServer) ClearEmails() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	s.Emails = nil
+}
+
+func (s *MockSMTPServer) GetEmails() []MockEmail {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.Emails
 }
