@@ -25,7 +25,12 @@ type SMTPClient struct {
 func NewSMTPClient(cfgFile *string) (*SMTPClient, error) {
 	var file string
 	if *cfgFile != "" {
-		file = fmt.Sprintf("./api/configs/%v.yaml", *cfgFile)
+		if *cfgFile != "test" {
+			file = fmt.Sprintf("./api/configs/%v.yaml", *cfgFile)
+		} else {
+			file = "../api/configs/dev.yaml"
+		}
+
 	}
 
 	cfg, e := configs.ConfigureEmailClient(file)

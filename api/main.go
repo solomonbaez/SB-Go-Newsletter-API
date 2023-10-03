@@ -66,6 +66,7 @@ func init() {
 
 var pool *pgxpool.Pool
 var enableTracing = false
+var enableAuth = false
 
 // server
 func main() {
@@ -153,10 +154,27 @@ func initializeDatabase(c context.Context) (*pgxpool.Pool, error) {
 }
 
 func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, error) {
+	var e error
 	// router
 	router := gin.Default()
+
+	// custom middleware
 	if enableTracing {
 		router.Use(TraceMiddleware())
+	}
+	// disable during dev
+	if enableAuth {
+		var users gin.Accounts
+		router.Use(func(c *gin.Context) {
+			users, e = rh.GetUsers(c)
+			if e != nil {
+				log.Fatal().
+					Err(e).
+					Msg("Failed to enable BasicAuth")
+				return
+			}
+			gin.BasicAuth(users)
+		})
 	}
 
 	router.GET("/health", handlers.HealthCheck)

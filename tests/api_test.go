@@ -428,7 +428,8 @@ func spawn_mock_database() (pgxmock.PgxConnIface, error) {
 }
 
 func spawn_mock_smtp_client() (*clients.SMTPClient, error) {
-	client, e := clients.NewSMTPClient("../api/configs/dev.yaml")
+	cfg := "test"
+	client, e := clients.NewSMTPClient(&cfg)
 	if e != nil {
 		return nil, e
 	}
