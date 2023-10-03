@@ -89,11 +89,11 @@ func (s *MockSMTPServer) handleConnection(conn net.Conn) {
 			break
 		}
 		if strings.HasPrefix(line, "Title:") {
-			email.Title = strings.TrimPrefix(line, "Title:")
+			email.Title = strings.TrimPrefix(line, "Title: ")
 		} else if strings.HasPrefix(line, "Text:") {
-			email.Text = strings.TrimPrefix(line, "Text:")
+			email.Text = strings.TrimPrefix(line, "Text: ")
 		} else if strings.HasPrefix(line, "Html:") {
-			email.Html = strings.TrimPrefix(line, "Html:")
+			email.Html = strings.TrimPrefix(line, "Html: ")
 		} else {
 			fmt.Println("Unknown")
 		}
@@ -116,6 +116,5 @@ func (s *MockSMTPServer) ClearEmails() {
 func (s *MockSMTPServer) GetEmails() []MockEmail {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	fmt.Printf("Len: %v", len(s.Emails))
 	return s.Emails
 }
