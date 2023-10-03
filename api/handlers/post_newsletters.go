@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +29,7 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client *clients.SMTPClien
 		// re-parse email to ensure data integrity
 		newsletter.Recipient, e = models.ParseEmail(s.Email.String())
 		if e != nil {
-			response = "Invalid email"
+			response = fmt.Sprintf("Invalid email: %v", s.Email.String())
 			HandleError(c, requestID, e, response, http.StatusConflict)
 			continue
 		}
