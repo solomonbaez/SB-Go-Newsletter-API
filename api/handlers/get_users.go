@@ -6,14 +6,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var users gin.Accounts
-
 func (rh *RouteHandler) GetUsers(c *gin.Context) (gin.Accounts, error) {
+	var users gin.Accounts
 	var username string
 	var password string
 
-	query := "SELECT username, password FROM users"
-	rows, e := rh.DB.Query(c, query)
+	rows, e := rh.DB.Query(c, "SELECT username, password FROM users")
 	if e != nil {
 		log.Error().
 			Err(e).
@@ -22,11 +20,17 @@ func (rh *RouteHandler) GetUsers(c *gin.Context) (gin.Accounts, error) {
 		return nil, e
 	}
 
-	// TODO fix lazy code
-	_, _ = pgx.ForEachRow(rows, []any{&username, &password}, func() error {
+	_, e = pgx.ForEachRow(rows, []any{&username, &password}, func() error {
 		users[username] = password
 		return nil
 	})
+	if e != nil {
+		log.Error().
+			Err(e).
+			Msg("Failed to parse admin users")
+
+		return nil, e
+	}
 
 	return users, nil
 }
