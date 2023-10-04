@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
 type MockSMTPClient struct {
@@ -16,7 +18,7 @@ func NewMockSMTPClient(addr string) *MockSMTPClient {
 	}
 }
 
-func (c *MockSMTPClient) SendEmail(email MockEmail) error {
+func (c *MockSMTPClient) SendEmail(email *models.Newsletter) error {
 	var e error
 
 	conn, e := net.Dial("tcp", c.Addr)
@@ -26,15 +28,19 @@ func (c *MockSMTPClient) SendEmail(email MockEmail) error {
 	defer conn.Close()
 
 	writer := bufio.NewWriter(conn)
-	_, e = fmt.Fprintf(writer, "Title: %s\n", email.Title)
+	_, e = fmt.Fprintf(writer, "Recipient: %s\n", email.Recipient)
 	if e != nil {
 		return e
 	}
-	_, e = fmt.Fprintf(writer, "Text: %s\n", email.Text)
+	_, e = fmt.Fprintf(writer, "Title: %s\n", email.Content.Title)
 	if e != nil {
 		return e
 	}
-	_, e = fmt.Fprintf(writer, "Html: %s\n", email.Html)
+	_, e = fmt.Fprintf(writer, "Text: %s\n", email.Content.Text)
+	if e != nil {
+		return e
+	}
+	_, e = fmt.Fprintf(writer, "Html: %s\n", email.Content.Html)
 	if e != nil {
 		return e
 	}

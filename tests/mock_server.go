@@ -6,18 +6,14 @@ import (
 	"net"
 	"strings"
 	"sync"
-)
 
-type MockEmail struct {
-	Title string
-	Text  string
-	Html  string
-}
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+)
 
 // in-memory SMTP server
 type MockSMTPServer struct {
 	Addr    string
-	Emails  []MockEmail
+	Emails  []models.Newsletter
 	wg      sync.WaitGroup
 	running bool
 	lock    sync.Mutex
@@ -66,6 +62,7 @@ func (s *MockSMTPServer) GetAddr() string {
 	return s.Addr
 }
 
+// TODO bubble up errors
 func (s *MockSMTPServer) handleConnection(conn net.Conn) {
 	defer func() {
 		conn.Close()
@@ -73,7 +70,8 @@ func (s *MockSMTPServer) handleConnection(conn net.Conn) {
 	}()
 
 	buf := bufio.NewReader(conn)
-	var email MockEmail
+	var email models.Newsletter
+	var body models.Body
 	var data string
 
 	for {
@@ -88,18 +86,26 @@ func (s *MockSMTPServer) handleConnection(conn net.Conn) {
 		if line == "." {
 			break
 		}
+		if strings.HasPrefix(line, "Recipient:") {
+			recipient := strings.TrimPrefix(line, "Recipient: ")
+			email.Recipient, e = models.ParseEmail(recipient)
+			if e != nil {
+				return
+			}
+		}
 		if strings.HasPrefix(line, "Title:") {
-			email.Title = strings.TrimPrefix(line, "Title: ")
+			body.Title = strings.TrimPrefix(line, "Title: ")
 		} else if strings.HasPrefix(line, "Text:") {
-			email.Text = strings.TrimPrefix(line, "Text: ")
+			body.Text = strings.TrimPrefix(line, "Text: ")
 		} else if strings.HasPrefix(line, "Html:") {
-			email.Html = strings.TrimPrefix(line, "Html: ")
+			body.Html = strings.TrimPrefix(line, "Html: ")
 		} else {
 			fmt.Println("Unknown")
 		}
 
 		data += line + "\n"
 	}
+	email.Content = &body
 
 	s.lock.Lock()
 	s.Emails = append(s.Emails, email)
@@ -113,7 +119,7 @@ func (s *MockSMTPServer) ClearEmails() {
 	s.Emails = nil
 }
 
-func (s *MockSMTPServer) GetEmails() []MockEmail {
+func (s *MockSMTPServer) GetEmails() []models.Newsletter {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	return s.Emails

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 	api "github.com/solomonbaez/SB-Go-Newsletter-API/tests"
 )
 
@@ -18,13 +19,18 @@ func TestMockEmail(t *testing.T) {
 	client := api.NewMockSMTPClient(addr)
 	t.Logf("Client connected to: %s", client.Addr)
 
-	emailContent := api.MockEmail{
+	body := models.Body{
 		Title: "testing",
 		Text:  "testing",
 		Html:  "testing",
 	}
-	if e := client.SendEmail(emailContent); e != nil {
+	emailContent := models.Newsletter{
+		Recipient: models.SubscriberEmail("test@test.com"),
+		Content:   &body,
+	}
+	if e := client.SendEmail(&emailContent); e != nil {
 		t.Errorf("Failed to send email: %v", e)
+		return
 	}
 
 	// asynchronous testing
@@ -35,10 +41,14 @@ func TestMockEmail(t *testing.T) {
 			t.Logf("Recieved emails: %v, Content: %v", recievedEmails, emailContent)
 
 			if len(recievedEmails) == 1 {
-				if recievedEmails[0] == emailContent {
+				recieved := recievedEmails[0]
+				// dereference newsletter.Content pointers
+				if recieved.Recipient == emailContent.Recipient && *recieved.Content == *emailContent.Content {
 					close(done)
 					return
 				}
+				t.Errorf("Expected %v, got %v", emailContent, recieved)
+				return
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
