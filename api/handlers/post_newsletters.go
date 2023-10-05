@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -25,7 +26,7 @@ type HashParams struct {
 	keyLen     uint32
 }
 
-var params = &HashParams{
+var params = HashParams{
 	saltLen:    16,
 	iterations: 1,
 	memory:     64 * 1024,
@@ -108,6 +109,10 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 		return nil, e
 	}
 
+	if e := ValidatePHC(credentials.password, password_hash); e != nil {
+		return nil, e
+	}
+
 	log.Info().
 		Str("requestID", requestID).
 		Str("userID", id).
@@ -168,10 +173,23 @@ func ParseNewsletter(c interface{}) error {
 	return nil
 }
 
-// // TODO validate PHC
-// func ValidatePHC(password string, phc string) error {
+// TODO validate PHC
+func ValidatePHC(password string, phc string) error {
+	p, s, h, e := DecodePHC(phc)
+	if e != nil {
+		return e
+	}
 
-// }
+	k := argon2.IDKey([]byte(password), s, p.iterations, p.memory, p.threads, p.keyLen)
+
+	// ctc to protect against timing attacks
+	if subtle.ConstantTimeCompare(h, k) != 1 {
+		e = errors.New("PHC are not equivalent")
+		return e
+	}
+
+	return nil
+}
 
 func GeneratePHC(password string) (string, error) {
 	salt, e := GenerateSalt()
@@ -195,7 +213,7 @@ func GeneratePHC(password string) (string, error) {
 func DecodePHC(phc string) (p *HashParams, s, h []byte, e error) {
 	values := strings.Split(phc, "$")
 	if len(values) != 6 {
-		e = errors.New("Invalid PHC")
+		e = errors.New("invalid PHC")
 		return nil, nil, nil, e
 	}
 
@@ -205,14 +223,14 @@ func DecodePHC(phc string) (p *HashParams, s, h []byte, e error) {
 		return nil, nil, nil, e
 	}
 	if version != argon2.Version {
-		e = errors.New("Invalid version")
+		e = errors.New("invalid version")
 		return nil, nil, nil, e
 	}
 
 	p = &HashParams{}
 	_, e = fmt.Sscanf(values[3], "m=%d,t=%d,p=%d", &p.memory, &p.iterations, &p.threads)
 	if e != nil {
-		e = errors.New("Invalid parameters")
+		e = errors.New("invalid parameters")
 		return nil, nil, nil, e
 	}
 
