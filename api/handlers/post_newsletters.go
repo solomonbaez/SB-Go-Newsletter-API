@@ -46,7 +46,7 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client *clients.SMTPClien
 		return
 	}
 
-	if e = ParseBody(&body); e != nil {
+	if e = ParseNewsletter(&body); e != nil {
 		response = "Could not send newsletter"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
@@ -61,6 +61,11 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client *clients.SMTPClien
 		if e != nil {
 			response = fmt.Sprintf("Invalid email: %v", s.Email.String())
 			HandleError(c, requestID, e, response, http.StatusConflict)
+			continue
+		}
+		if e = ParseNewsletter(newsletter); e != nil {
+			response = "Invalid newsletter"
+			HandleError(c, requestID, e, response, http.StatusBadRequest)
 			continue
 		}
 		if e = client.SendEmail(c, &newsletter); e != nil {
@@ -128,16 +133,15 @@ func BasicAuth(c *gin.Context) (*Credentials, error) {
 	return credentials, nil
 }
 
-func ParseBody(body *models.Body) error {
-	r := reflect.TypeOf(*body)
-	v := reflect.ValueOf(*body)
+func ParseNewsletter(c interface{}) error {
+	v := reflect.ValueOf(c).Elem()
 	nFields := v.NumField()
 
 	for i := 0; i < nFields; i++ {
 		field := v.Field(i)
 		valid := field.IsValid() && !field.IsZero()
 		if !valid {
-			name := r.Field(i).Name
+			name := v.Type().Field(i).Name
 			return fmt.Errorf("field: %s cannot be empty", name)
 		}
 	}

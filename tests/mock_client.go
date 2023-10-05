@@ -22,7 +22,10 @@ func NewMockSMTPClient(addr string) *MockSMTPClient {
 func (c *MockSMTPClient) SendEmail(email *models.Newsletter) error {
 	var e error
 
-	if e := handlers.ParseBody(email.Content); e != nil {
+	if e := handlers.ParseNewsletter(email); e != nil {
+		return e
+	}
+	if e := handlers.ParseNewsletter(email.Content); e != nil {
 		return e
 	}
 
