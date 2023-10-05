@@ -2,10 +2,10 @@ package api
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"net"
 
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
@@ -22,9 +22,8 @@ func NewMockSMTPClient(addr string) *MockSMTPClient {
 func (c *MockSMTPClient) SendEmail(email *models.Newsletter) error {
 	var e error
 
-	ec := *email.Content
-	if ec.Title == "" || ec.Text == "" || ec.Html == "" {
-		return errors.New("Cannot parse empty field")
+	if e := handlers.ParseBody(email.Content); e != nil {
+		return e
 	}
 
 	conn, e := net.Dial("tcp", c.Addr)
