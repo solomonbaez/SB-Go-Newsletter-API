@@ -3,7 +3,6 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -21,7 +20,7 @@ import (
 const (
 	s = 16
 	t = 1
-	m = 256 * 1024
+	m = 64 * 1024
 	p = 4
 	k = 32
 )
@@ -91,16 +90,12 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client *clients.SMTPClien
 
 func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credentials) (*string, error) {
 	var id string
+	var password_hash string
 
 	requestID := c.GetString("requestID")
-	hash, e := Argon2idHash(credentials.password)
-	if e != nil {
-		return nil, e
-	}
-	password_hash := hex.EncodeToString(hash)
 
-	query := "SELECT id FROM users WHERE username=$1 AND password_hash=$2"
-	e = rh.DB.QueryRow(c, query, credentials.username, password_hash).Scan(&id)
+	query := "SELECT id, password_hash FROM users WHERE username=$1"
+	e := rh.DB.QueryRow(c, query, credentials.username, password_hash).Scan(&id, password_hash)
 	if e != nil {
 		return nil, e
 	}
@@ -165,14 +160,20 @@ func ParseNewsletter(c interface{}) error {
 	return nil
 }
 
-func Argon2idHash(password string) ([]byte, error) {
+func GeneratePHC(password string) (string, error) {
 	salt, e := GenerateSalt()
 	if e != nil {
-		return nil, e
+		return "", e
 	}
 
 	hash := argon2.IDKey([]byte(password), salt, t, m, p, k)
-	return hash, nil
+
+	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
+	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
+
+	encodedHash := fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s", argon2.Version, m, t, p, b64Salt, b64Hash)
+
+	return encodedHash, nil
 }
 
 func GenerateSalt() ([]byte, error) {
