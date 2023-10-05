@@ -2,6 +2,7 @@ package api
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"net"
 
@@ -20,6 +21,11 @@ func NewMockSMTPClient(addr string) *MockSMTPClient {
 
 func (c *MockSMTPClient) SendEmail(email *models.Newsletter) error {
 	var e error
+
+	ec := *email.Content
+	if ec.Title == "" || ec.Text == "" || ec.Html == "" {
+		return errors.New("Cannot parse empty field")
+	}
 
 	conn, e := net.Dial("tcp", c.Addr)
 	if e != nil {

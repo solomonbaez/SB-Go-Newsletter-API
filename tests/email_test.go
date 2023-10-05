@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -60,4 +61,48 @@ func TestMockEmail(t *testing.T) {
 		t.Error("Timed out waiting for email processing")
 	}
 
+}
+
+func TestMockEmail_EmptyFields_Fails(t *testing.T) {
+	server := api.NewMockSMTPServer()
+	server.Start()
+	defer server.Stop()
+
+	addr := server.GetAddr()
+	t.Logf("Server address is: %s", addr)
+
+	client := api.NewMockSMTPClient(addr)
+	t.Logf("Client connected to: %s", client.Addr)
+
+	var testCases []*models.Body
+	testBody := models.Body{
+		Title: "testing",
+		Text:  "testing",
+		Html:  "<p>testing</p>",
+	}
+
+	var b models.Body
+	for i := 0; i < 3; i++ {
+		b = testBody
+		if i == 0 {
+			b.Title = ""
+		} else if i == 1 {
+			b.Text = ""
+		} else {
+			b.Html = ""
+		}
+
+		testCases = append(testCases, &b)
+	}
+
+	for _, tc := range testCases {
+		fmt.Printf("tc: %v", tc)
+		emailContent := models.Newsletter{
+			Recipient: models.SubscriberEmail("test@test.com"),
+			Content:   tc,
+		}
+		if e := client.SendEmail(&emailContent); e == nil {
+			t.Errorf("Failed to filter email: %v", e)
+		}
+	}
 }
