@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,7 +15,15 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
-	"golang.org/x/crypto/sha3"
+	"golang.org/x/crypto/argon2"
+)
+
+const (
+	s = 16
+	t = 1
+	m = 256 * 1024
+	p = 4
+	k = 32
 )
 
 type Credentials struct {
@@ -83,10 +93,14 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 	var id string
 
 	requestID := c.GetString("requestID")
-	password_hash := Sha3Hash(credentials.password)
+	hash, e := Argon2idHash(credentials.password)
+	if e != nil {
+		return nil, e
+	}
+	password_hash := hex.EncodeToString(hash)
 
 	query := "SELECT id FROM users WHERE username=$1 AND password_hash=$2"
-	e := rh.DB.QueryRow(c, query, credentials.username, password_hash).Scan(&id)
+	e = rh.DB.QueryRow(c, query, credentials.username, password_hash).Scan(&id)
 	if e != nil {
 		return nil, e
 	}
@@ -151,12 +165,22 @@ func ParseNewsletter(c interface{}) error {
 	return nil
 }
 
-func Sha3Hash(input string) string {
-	hash := sha3.New256()
-	_, _ = hash.Write([]byte(input))
+func Argon2idHash(password string) ([]byte, error) {
+	salt, e := GenerateSalt()
+	if e != nil {
+		return nil, e
+	}
 
-	sha3 := hash.Sum(nil)
+	hash := argon2.IDKey([]byte(password), salt, t, m, p, k)
+	return hash, nil
+}
 
-	// Convert the encoded byte slice to a string
-	return fmt.Sprintf("%x", sha3)
+func GenerateSalt() ([]byte, error) {
+	b := make([]byte, s)
+	_, e := rand.Read(b)
+	if e != nil {
+		return nil, e
+	}
+
+	return b, nil
 }
