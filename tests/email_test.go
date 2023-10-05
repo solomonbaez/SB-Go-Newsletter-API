@@ -107,7 +107,7 @@ func TestMockEmail_EmptyFields_Fails(t *testing.T) {
 	}
 }
 
-func TestMockEmail_Empty_Fails(t *testing.T) {
+func TestMockEmail_EmptyRecipient_Fails(t *testing.T) {
 	server := api.NewMockSMTPServer()
 	server.Start()
 	defer server.Stop()
@@ -118,35 +118,16 @@ func TestMockEmail_Empty_Fails(t *testing.T) {
 	client := api.NewMockSMTPClient(addr)
 	t.Logf("Client connected to: %s", client.Addr)
 
-	var testCases []*models.Body
 	testBody := models.Body{
 		Title: "testing",
 		Text:  "testing",
 		Html:  "<p>testing</p>",
 	}
-
-	var b models.Body
-	for i := 0; i < 3; i++ {
-		b = testBody
-		if i == 0 {
-			b.Title = ""
-		} else if i == 1 {
-			b.Text = ""
-		} else {
-			b.Html = ""
-		}
-
-		testCases = append(testCases, &b)
+	emailContent := models.Newsletter{
+		Recipient: models.SubscriberEmail(""),
+		Content:   &testBody,
 	}
-
-	for _, tc := range testCases {
-		fmt.Printf("tc: %v", tc)
-		emailContent := models.Newsletter{
-			Recipient: models.SubscriberEmail("test@test.com"),
-			Content:   tc,
-		}
-		if e := client.SendEmail(&emailContent); e == nil {
-			t.Errorf("Failed to filter email: %v", e)
-		}
+	if e := client.SendEmail(&emailContent); e == nil {
+		t.Errorf("Failed to filter email: %v", e)
 	}
 }
