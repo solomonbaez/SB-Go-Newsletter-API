@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+	"golang.org/x/crypto/sha3"
 )
 
 type Credentials struct {
@@ -82,9 +83,10 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 	var id string
 
 	requestID := c.GetString("requestID")
+	password_hash := Sha3Hash(credentials.password)
 
-	query := "SELECT id FROM users WHERE username=$1 AND password=$2"
-	e := rh.DB.QueryRow(c, query, credentials.username, credentials.password).Scan(&id)
+	query := "SELECT id FROM users WHERE username=$1 AND password_hash=$2"
+	e := rh.DB.QueryRow(c, query, credentials.username, password_hash).Scan(&id)
 	if e != nil {
 		return nil, e
 	}
@@ -147,4 +149,14 @@ func ParseNewsletter(c interface{}) error {
 	}
 
 	return nil
+}
+
+func Sha3Hash(input string) string {
+	hash := sha3.New256()
+	_, _ = hash.Write([]byte(input))
+
+	sha3 := hash.Sum(nil)
+
+	// Convert the encoded byte slice to a string
+	return fmt.Sprintf("%x", sha3)
 }
