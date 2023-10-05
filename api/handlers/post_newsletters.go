@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"unicode/utf8"
 
@@ -44,6 +45,13 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client *clients.SMTPClien
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
+
+	if e = ParseBody(&body); e != nil {
+		response = "Could not send newsletter"
+		HandleError(c, requestID, e, response, http.StatusBadRequest)
+		return
+	}
+
 	newsletter.Content = &body
 
 	subscribers := rh.GetConfirmedSubscribers(c)
@@ -118,4 +126,21 @@ func BasicAuth(c *gin.Context) (*Credentials, error) {
 	}
 
 	return credentials, nil
+}
+
+func ParseBody(body *models.Body) error {
+	r := reflect.TypeOf(body)
+	v := reflect.ValueOf(body)
+	nFields := v.NumField()
+
+	for i := 0; i < nFields; i++ {
+		field := v.Field(i)
+		valid := field.IsValid() && !field.IsZero()
+		if !valid {
+			name := r.Field(i).Name
+			return fmt.Errorf("Field: %s cannot be empty", name)
+		}
+	}
+
+	return nil
 }
