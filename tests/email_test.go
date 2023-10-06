@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
-	api "github.com/solomonbaez/SB-Go-Newsletter-API/tests"
+	api "github.com/solomonbaez/SB-Go-Newsletter-API/test_helpers"
 )
 
 func TestMockEmail(t *testing.T) {

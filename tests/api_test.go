@@ -106,7 +106,7 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 	mock_id := uuid.NewString()
 	database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
 		pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
-			AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User"), time.Now(), "pending"),
+			AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("TestUser"), time.Now(), "pending"),
 	)
 
 	app := spawn_app(router, request)
@@ -118,7 +118,7 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
 	}
 
-	expected_body := fmt.Sprintf(`{"requestID":"","subscribers":[{"id":"%v","email":"test@test.com","name":"Test User","status":"pending"}]}`, mock_id)
+	expected_body := fmt.Sprintf(`{"requestID":"","subscribers":[{"id":"%v","email":"test@test.com","name":"TestUser","status":"pending"}]}`, mock_id)
 	response_body := app.recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
@@ -149,7 +149,7 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name", "status"}).
-				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User"), "pending"),
+				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("TestUser"), "pending"),
 		)
 
 	// tests
@@ -161,7 +161,7 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusFound, status)
 	}
 
-	expected_body := fmt.Sprintf(`{"requestID":"","subscriber":{"id":"%v","email":"test@test.com","name":"Test User","status":"pending"}}`, mock_id)
+	expected_body := fmt.Sprintf(`{"requestID":"","subscriber":{"id":"%v","email":"test@test.com","name":"TestUser","status":"pending"}}`, mock_id)
 	response_body := app.recorder.Body.String()
 
 	if response_body != expected_body {
@@ -194,7 +194,7 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name"}).
-				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("Test User")),
+				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("TestUser")),
 		)
 
 	// tests
@@ -227,7 +227,7 @@ func Test_Subscribe(t *testing.T) {
 
 	router := spawn_mock_router(database, client)
 
-	data := `{"email": "test@test.com", "name": "Test User"}`
+	data := `{"email": "test@test.com", "name": "TestUser"}`
 	request, e := http.NewRequest("POST", "/subscribe", strings.NewReader(data))
 	if e != nil {
 		t.Fatal(e)
@@ -251,7 +251,7 @@ func Test_Subscribe(t *testing.T) {
 		t.Errorf("Expected status code %v, but got %v", http.StatusCreated, status)
 	}
 
-	expected_body := `{"requestID":"","subscriber":{"id":"","email":"test@test.com","name":"Test User","status":"pending"}}`
+	expected_body := `{"requestID":"","subscriber":{"id":"","email":"test@test.com","name":"TestUser","status":"pending"}}`
 	response_body := app.recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
@@ -269,12 +269,12 @@ func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 
 	var test_cases []string
 	test_cases = append(test_cases,
-		`{email: "", "name": "Test User"}`,
-		`{email: " ", "name": "Test User"}`,
-		`{"email": "test", "name": "Test User"}`,
-		`{"email": "test@", "name": "Test User"}`,
-		`{"email": "@test.com", "name": "Test User"}`,
-		`{"email": "test.com", "name": "Test User"}`,
+		`{email: "", "name": "TestUser"}`,
+		`{email: " ", "name": "TestUser"}`,
+		`{"email": "test", "name": "TestUser"}`,
+		`{"email": "test@", "name": "TestUser"}`,
+		`{"email": "@test.com", "name": "TestUser"}`,
+		`{"email": "test.com", "name": "TestUser"}`,
 	)
 	for _, tc := range test_cases {
 		// resource intensive but necessary duplication
@@ -380,7 +380,7 @@ func Test_Subscribe_MaxLengthParameters_Fails(t *testing.T) {
 
 	var test_cases []string
 	test_cases = append(test_cases,
-		fmt.Sprintf(`{"email": "%v", "name": "Test User"}`, long_email),
+		fmt.Sprintf(`{"email": "%v", "name": "TestUser"}`, long_email),
 		fmt.Sprintf(`{"email": "test@test.com", "name": "%v"}`, long_name),
 		fmt.Sprintf(`{"email": "%v", "name": "%v"}`, long_email, long_name),
 	)

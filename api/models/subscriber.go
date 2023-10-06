@@ -11,7 +11,7 @@ import (
 const (
 	maxEmailLength = 100
 	maxNameLength  = 100
-	invalidRunes   = "{}/\\<>()"
+	invalidRunes   = "{}/\\<>() "
 )
 
 var (

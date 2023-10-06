@@ -25,7 +25,7 @@ func TestParseName(t *testing.T) {
 	longName := "a" + strings.Repeat("a", 100)
 
 	testCases := []string{
-		"", " ", longName, "{", "}", "/", "\\", "<", ">", "(", ")",
+		"", " ", "a b", longName, "{", "}", "/", "\\", "<", ">", "(", ")",
 	}
 
 	for _, tc := range testCases {

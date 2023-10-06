@@ -144,8 +144,12 @@ func BasicAuth(c *gin.Context) (*Credentials, error) {
 	}
 
 	// valid header should only contain two segments
-	utf8Segment := string(decodedSegment)
+	utf8Segment := strings.Trim(string(decodedSegment), " ")
 	s := strings.Split(utf8Segment, ":")
+	if len(s) < 2 {
+		e = errors.New("fields cannot be empty")
+		return nil, e
+	}
 	username := s[0]
 	password := s[1]
 
@@ -192,7 +196,7 @@ func ValidatePHC(password string, phc string) error {
 }
 
 func GeneratePHC(password string) (string, error) {
-	salt, e := GenerateSalt()
+	salt, e := GenerateSalt(params.saltLen)
 	if e != nil {
 		return "", e
 	}
@@ -249,8 +253,8 @@ func DecodePHC(phc string) (p *HashParams, s, h []byte, e error) {
 	return p, s, h, nil
 }
 
-func GenerateSalt() ([]byte, error) {
-	b := make([]byte, params.saltLen)
+func GenerateSalt(s uint32) ([]byte, error) {
+	b := make([]byte, s)
 	_, e := rand.Read(b)
 	if e != nil {
 		return nil, e
