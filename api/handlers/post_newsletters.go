@@ -18,6 +18,8 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
+const invalidRunes = "{}/\\<>() "
+
 type HashParams struct {
 	saltLen    uint32
 	iterations uint32
@@ -39,7 +41,7 @@ type Credentials struct {
 	password string
 }
 
-func (rh *RouteHandler) PostNewsletter(c *gin.Context, client *clients.SMTPClient) {
+func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClient) {
 	var newsletter models.Newsletter
 	var body models.Body
 	var response string
@@ -104,7 +106,7 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 	requestID := c.GetString("requestID")
 
 	query := "SELECT id, password_hash FROM users WHERE username=$1"
-	e := rh.DB.QueryRow(c, query, credentials.username, password_hash).Scan(&id, password_hash)
+	e := rh.DB.QueryRow(c, query, credentials.username).Scan(&id, password_hash)
 	if e != nil {
 		return nil, e
 	}
@@ -125,40 +127,56 @@ func BasicAuth(c *gin.Context) (*Credentials, error) {
 	var e error
 
 	h := c.GetHeader("Authorization")
+	log.Info().
+		Str("h", h).
+		Msg("")
 
-	encodedSegment, valid := strings.CutPrefix(h, "Basic ")
-	if !valid {
-		e := errors.New("authorization method is not Basic")
+	var encodedSegment string
+	if strings.HasPrefix(h, "Basic ") {
+		encodedSegment = strings.TrimPrefix(h, "Basic ")
+		encodedSegment = strings.TrimRight(encodedSegment, "=")
+
+		log.Info().
+			Str("seg", encodedSegment).
+			Msg("")
+
+		decodedSegment, e := base64.RawURLEncoding.DecodeString(encodedSegment)
+		if e != nil {
+			return nil, e
+		}
+
+		valid := utf8.Valid(decodedSegment)
+		if !valid {
+			e = errors.New("invalid header encoding")
+			return nil, e
+		}
+
+		// valid header should only contain two segments
+		utf8Segment := strings.Trim(string(decodedSegment), " ")
+		s := strings.Split(utf8Segment, ":")
+		if len(s) < 2 {
+			e = errors.New("fields cannot be empty")
+			return nil, e
+		}
+		username, e := ParseField(s[0])
+		if e != nil {
+			return nil, e
+		}
+		password, e := ParseField(s[1])
+		if e != nil {
+			return nil, e
+		}
+
+		credentials := &Credentials{
+			username,
+			password,
+		}
+
+		return credentials, nil
+	} else {
+		e = errors.New("authorization method must be basic")
 		return nil, e
 	}
-
-	decodedSegment, e := base64.RawStdEncoding.DecodeString(encodedSegment)
-	if e != nil {
-		return nil, e
-	}
-
-	valid = utf8.Valid(decodedSegment)
-	if !valid {
-		e = errors.New("invalid header encoding")
-		return nil, e
-	}
-
-	// valid header should only contain two segments
-	utf8Segment := strings.Trim(string(decodedSegment), " ")
-	s := strings.Split(utf8Segment, ":")
-	if len(s) < 2 {
-		e = errors.New("fields cannot be empty")
-		return nil, e
-	}
-	username := s[0]
-	password := s[1]
-
-	credentials := &Credentials{
-		username,
-		password,
-	}
-
-	return credentials, nil
 }
 
 func ParseNewsletter(c interface{}) error {
@@ -261,4 +279,22 @@ func GenerateSalt(s uint32) ([]byte, error) {
 	}
 
 	return b, nil
+}
+
+func ParseField(n string) (string, error) {
+	// injection check
+	for _, r := range n {
+		c := string(r)
+		if strings.Contains(invalidRunes, c) {
+			return "", fmt.Errorf("invalid character in name: %v", c)
+		}
+	}
+
+	// empty field check
+	nTrim := strings.Trim(n, " ")
+	if nTrim == "" {
+		return "", errors.New("name cannot be empty or whitespace")
+	}
+
+	return n, nil
 }
