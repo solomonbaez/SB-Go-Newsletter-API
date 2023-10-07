@@ -18,7 +18,7 @@ type SMTPClient struct {
 	SmtpPort     int
 	smtpUsername string
 	smtpPassword string
-	sender       models.SubscriberEmail
+	Sender       models.SubscriberEmail
 }
 
 func NewSMTPClient(cfgFile *string) (*SMTPClient, error) {
@@ -57,7 +57,7 @@ func NewSMTPClient(cfgFile *string) (*SMTPClient, error) {
 
 func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) error {
 	m := gomail.NewMessage()
-	m.SetHeader("From", client.sender.String())
+	m.SetHeader("From", client.Sender.String())
 	m.SetHeader("To", newsletter.Recipient.String())
 	m.SetHeader("Subject", newsletter.Content.Title)
 	m.SetBody("text/plain", newsletter.Content.Text)

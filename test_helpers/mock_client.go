@@ -65,9 +65,3 @@ func (c *MockSMTPClient) SendEmail(email *models.Newsletter) error {
 
 	return nil
 }
-
-// ALTERNATIVE APPROACH
-var TestClient = &clients.SMTPClient{
-	SmtpServer: "[::]",
-	SmtpPort:   0,
-}

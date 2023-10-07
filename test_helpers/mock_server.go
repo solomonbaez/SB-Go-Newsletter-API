@@ -36,6 +36,8 @@ func (s *MockSMTPServer) Start() {
 	s.lock.Unlock()
 
 	go func() {
+		defer listener.Close()
+
 		for {
 			conn, e := listener.Accept()
 			if e != nil {
