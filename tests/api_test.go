@@ -547,6 +547,54 @@ func Test_ConfirmSubscriber_Passes(t *testing.T) {
 	}
 }
 
+func Test_ConfirmSubscriber_InvalidID_Fails(t *testing.T) {
+	// initialize
+	database, e := spawn_mock_database()
+	if e != nil {
+		t.Fatal(e)
+	}
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
+
+	mock_token := uuid.NewString()
+	request, e := http.NewRequest("GET", fmt.Sprintf("/confirm/%s", mock_token), nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	invalid_token := uuid.NewString()
+	mock_id := uuid.NewString()
+	database.ExpectQuery(`SELECT subscriber_id FROM subscription_tokens WHERE`).
+		WithArgs(pgxmock.AnyArg().Match(invalid_token)).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"subscriber_id"}).
+				AddRow(mock_id),
+		)
+
+	database.ExpectExec(`UPDATE subscriptions SET status = 'confirmed' WHERE`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	app := spawn_app(router, request)
+	defer database.ExpectationsWereMet()
+	defer database.Close(app.context)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusInternalServerError {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
+
+	expected_body := fmt.Sprintf(`{"error":"Failed to fetch subscriber ID: argument 0 expected [bool - true] does not match actual [string - %s]","requestID":""}`, mock_token)
+	response_body := app.recorder.Body.String()
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+	}
+}
+
 func spawn_mock_database() (pgxmock.PgxConnIface, error) {
 	mock_db, e := pgxmock.NewConn()
 	if e != nil {
