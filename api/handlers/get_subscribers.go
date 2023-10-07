@@ -114,7 +114,7 @@ func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) []*models.Subscri
 		Str("requestID", requestID).
 		Msg("Fetching confirmed subscribers...")
 
-	rows, e := rh.DB.Query(c, "SELECT * FROM subscriptions WHERE status=$1", "confirmed")
+	rows, e := rh.DB.Query(c, "SELECT id, email, name, created, status FROM subscriptions WHERE status=$1", "confirmed")
 	if e != nil {
 		response = "Failed to fetch confirmed subscribers"
 		HandleError(c, requestID, e, response, http.StatusInternalServerError)

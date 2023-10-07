@@ -125,6 +125,88 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 	}
 }
 
+func Test_GetConfirmedSubscribers_NoSubscribers_Passes(t *testing.T) {
+	// initialize
+	database, e := spawn_mock_database()
+	if e != nil {
+		t.Fatal(e)
+	}
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
+
+	request, e := http.NewRequest("GET", "/confirmed", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}),
+		)
+
+	app := spawn_app(router, request)
+	defer database.ExpectationsWereMet()
+	defer database.Close(app.context)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusOK {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
+
+	expected_body := `{"requestID":"","subscribers":"No confirmed subscribers"}`
+	response_body := app.recorder.Body.String()
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+	}
+}
+
+func Test_GetConfirmedSubscribers_WithSubscribers_Passes(t *testing.T) {
+	// initialize
+	database, e := spawn_mock_database()
+	if e != nil {
+		t.Fatal(e)
+	}
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	router := spawn_mock_router(database, client)
+
+	request, e := http.NewRequest("GET", "/confirmed", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	mock_id := uuid.NewString()
+	database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
+				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("TestUser"), time.Now(), "confirmed"),
+		)
+
+	app := spawn_app(router, request)
+	defer database.ExpectationsWereMet()
+	defer database.Close(app.context)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusOK {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
+
+	expected_body := fmt.Sprintf(`{"requestID":"","subscribers":[{"id":"%s","email":"test@test.com","name":"TestUser","status":"confirmed"}]}`, mock_id)
+	response_body := app.recorder.Body.String()
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+	}
+}
+
 func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 	// initialization
 	database, e := spawn_mock_database()
@@ -442,6 +524,9 @@ func spawn_mock_router(db pgxmock.PgxConnIface, client *clients.SMTPClient) *gin
 
 	router := gin.Default()
 	router.GET("/subscribers", rh.GetSubscribers)
+	router.GET("/confirmed", func(c *gin.Context) {
+		_ = rh.GetConfirmedSubscribers(c)
+	})
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
 	router.POST("/subscribe", func(c *gin.Context) {
 		rh.Subscribe(c, client)
