@@ -59,6 +59,7 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClien
 	if e != nil {
 		response := "Failed to validate credentials"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
+		return
 	}
 
 	if e = c.ShouldBindJSON(&body); e != nil {
@@ -72,7 +73,6 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClien
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
-
 	newsletter.Content = &body
 
 	subscribers := rh.GetConfirmedSubscribers(c)
@@ -89,7 +89,7 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClien
 			HandleError(c, requestID, e, response, http.StatusBadRequest)
 			continue
 		}
-		if e = client.SendEmail(c, &newsletter); e != nil {
+		if e = client.SendEmail(&newsletter); e != nil {
 			response = "Could not send newsletter"
 			HandleError(c, requestID, e, response, http.StatusInternalServerError)
 			continue

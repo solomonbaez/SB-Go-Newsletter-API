@@ -79,7 +79,7 @@ func (s *MockSMTPServer) handleConnection(conn net.Conn) {
 		if e != nil {
 			return
 		}
-		// reamove \n
+		// remove \n
 		line = strings.TrimRight(line, "\n")
 
 		// terminator
@@ -93,14 +93,14 @@ func (s *MockSMTPServer) handleConnection(conn net.Conn) {
 				return
 			}
 		}
-		if strings.HasPrefix(line, "Title:") {
-			body.Title = strings.TrimPrefix(line, "Title: ")
-		} else if strings.HasPrefix(line, "Text:") {
-			body.Text = strings.TrimPrefix(line, "Text: ")
-		} else if strings.HasPrefix(line, "Html:") {
-			body.Html = strings.TrimPrefix(line, "Html: ")
+		if strings.HasPrefix(line, "Subject:") {
+			body.Title = strings.TrimPrefix(line, "Subject: ")
+		} else if strings.HasPrefix(line, "text/plain:") {
+			body.Text = strings.TrimPrefix(line, "text/plain: ")
+		} else if strings.HasPrefix(line, "text/html:") {
+			body.Html = strings.TrimPrefix(line, "text/html: ")
 		} else {
-			fmt.Println("Unknown")
+			return
 		}
 
 		data += line + "\n"

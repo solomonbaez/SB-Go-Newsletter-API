@@ -2,11 +2,14 @@ package api_test
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 	api "github.com/solomonbaez/SB-Go-Newsletter-API/test_helpers"
+	helpers "github.com/solomonbaez/SB-Go-Newsletter-API/test_helpers"
 )
 
 func TestMockEmail(t *testing.T) {
@@ -130,4 +133,39 @@ func TestMockEmail_EmptyRecipient_Fails(t *testing.T) {
 	if e := client.SendEmail(&emailContent); e == nil {
 		t.Errorf("Failed to filter email: %v", e)
 	}
+}
+
+func TestMockEmail_GomailClient(t *testing.T) {
+	server := api.NewMockSMTPServer()
+	server.Start()
+	defer server.Stop()
+
+	addr := server.GetAddr()
+	tmp := strings.Split(addr, ":")
+	port, e := strconv.Atoi(tmp[len(tmp)-1])
+	if e != nil {
+		t.Errorf("Failed to parse port")
+		return
+	}
+
+	client := helpers.TestClient
+	client.SmtpServer = "[::]"
+	client.SmtpPort = port
+	fmt.Printf("%v", client)
+
+	body := models.Body{
+		Title: "testing",
+		Text:  "testing",
+		Html:  "<p>testing</p>",
+	}
+	emailContent := models.Newsletter{
+		Recipient: models.SubscriberEmail("test@test.com"),
+		Content:   &body,
+	}
+
+	if e := client.SendEmail(&emailContent); e != nil {
+		t.Errorf("Failed to send email")
+		return
+	}
+
 }

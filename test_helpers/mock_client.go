@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
@@ -63,4 +64,10 @@ func (c *MockSMTPClient) SendEmail(email *models.Newsletter) error {
 	}
 
 	return nil
+}
+
+// ALTERNATIVE APPROACH
+var TestClient = &clients.SMTPClient{
+	SmtpServer: "[::]",
+	SmtpPort:   0,
 }

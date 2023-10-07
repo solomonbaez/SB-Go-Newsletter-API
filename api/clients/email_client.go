@@ -3,7 +3,6 @@ package clients
 import (
 	"fmt"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-gomail/gomail"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
@@ -11,12 +10,12 @@ import (
 )
 
 type EmailClient interface {
-	SendEmail(c *gin.Context, email *models.Newsletter) error
+	SendEmail(email *models.Newsletter) error
 }
 
 type SMTPClient struct {
 	SmtpServer   string // export for testing
-	smtpPort     int
+	SmtpPort     int
 	smtpUsername string
 	smtpPassword string
 	sender       models.SubscriberEmail
@@ -56,9 +55,7 @@ func NewSMTPClient(cfgFile *string) (*SMTPClient, error) {
 	return client, nil
 }
 
-func (client *SMTPClient) SendEmail(c *gin.Context, newsletter *models.Newsletter) error {
-	requestID := c.GetString("requestID")
-
+func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) error {
 	m := gomail.NewMessage()
 	m.SetHeader("From", client.sender.String())
 	m.SetHeader("To", newsletter.Recipient.String())
@@ -66,13 +63,7 @@ func (client *SMTPClient) SendEmail(c *gin.Context, newsletter *models.Newslette
 	m.SetBody("text/plain", newsletter.Content.Text)
 	m.AddAlternative("text/html", newsletter.Content.Html)
 
-	log.Info().
-		Str("requestID", requestID).
-		Str("sender", client.sender.String()).
-		Str("recipient", newsletter.Recipient.String()).
-		Msg("Attempting to send an email...")
-
-	dialer := gomail.NewDialer(client.SmtpServer, client.smtpPort, client.smtpUsername, client.smtpPassword)
+	dialer := gomail.NewDialer(client.SmtpServer, client.SmtpPort, client.smtpUsername, client.smtpPassword)
 	if e := dialer.DialAndSend(m); e != nil {
 		log.Error().
 			Err(e).
@@ -80,12 +71,6 @@ func (client *SMTPClient) SendEmail(c *gin.Context, newsletter *models.Newslette
 
 		return e
 	}
-
-	log.Info().
-		Str("requestID", requestID).
-		Str("sender", client.sender.String()).
-		Str("recipient", newsletter.Recipient.String()).
-		Msg("Email sent")
 
 	return nil
 }

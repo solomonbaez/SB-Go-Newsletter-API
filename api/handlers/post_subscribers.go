@@ -109,7 +109,7 @@ func insertSubscriber(c *gin.Context, client *clients.SMTPClient, tx pgx.Tx, sub
 			Html:  fmt.Sprintf("<p>Welcome to our newsletter! Please confirm your subscription at: <a>%v</a></p>", confirmationLink),
 		}
 
-		if e := client.SendEmail(c, confirmation); e != nil {
+		if e := client.SendEmail(confirmation); e != nil {
 			return e
 		}
 	}
