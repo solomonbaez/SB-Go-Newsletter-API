@@ -16,7 +16,7 @@ func (rh *RouteHandler) ConfirmSubscriber(c *gin.Context) {
 	requestID := c.GetString("requestID")
 	token := c.Param("token")
 
-	query = "SELECT (subscriber_id) FROM subscription_tokens WHERE subscription_token = $1"
+	query = "SELECT subscriber_id FROM subscription_tokens WHERE subscription_token = $1"
 	e = rh.DB.QueryRow(c, query, token).Scan(&id)
 	if e != nil {
 		response = "Failed to fetch subscriber ID"
