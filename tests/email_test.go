@@ -90,3 +90,45 @@ func TestMockEmail_InvalidRecipient_Fails(t *testing.T) {
 		return
 	}
 }
+
+func TestMockEmail_InvalidBody_Fails(t *testing.T) {
+	cfg := mock.ConfigurationAttr{}
+	server := mock.New(cfg)
+	server.Start()
+	port := server.PortNumber
+
+	client := mockClient
+	client.SmtpPort = port
+	client.Sender = models.SubscriberEmail("user@test.com")
+	fmt.Printf("%v", client)
+
+	testCases := []models.Body{
+		{
+			Title: "",
+			Text:  "testing",
+			Html:  "<p>testing</p>",
+		},
+		{
+			Title: "testing",
+			Text:  "",
+			Html:  "<p>testing</p>",
+		},
+		{
+			Title: "testing",
+			Text:  "testing",
+			Html:  "",
+		},
+	}
+
+	for _, tc := range testCases {
+		emailContent := models.Newsletter{
+			Recipient: models.SubscriberEmail("test.com"),
+			Content:   &tc,
+		}
+
+		if e := client.SendEmail(&emailContent); e == nil {
+			t.Errorf("Failed to filter invalid email")
+			return
+		}
+	}
+}
