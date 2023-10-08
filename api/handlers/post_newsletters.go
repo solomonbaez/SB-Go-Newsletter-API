@@ -38,8 +38,8 @@ var params = HashParams{
 }
 
 type Credentials struct {
-	username string
-	password string
+	Username string
+	Password string
 }
 
 var baseHash string
@@ -114,13 +114,17 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 	requestID := c.GetString("requestID")
 
 	query := "SELECT id, password_hash FROM users WHERE username=$1"
-	e := rh.DB.QueryRow(c, query, credentials.username).Scan(&id, &password_hash)
+	e := rh.DB.QueryRow(c, query, credentials.Username).Scan(&id, &password_hash)
 	if e != nil {
+		log.Error().
+			Err(e).
+			Msg("Invalid username")
+
 		// prevent timing attacks!
 		password_hash = baseHash
 	}
 
-	if e := ValidatePHC(credentials.password, password_hash); e != nil {
+	if e := ValidatePHC(credentials.Password, password_hash); e != nil {
 		return nil, e
 	}
 

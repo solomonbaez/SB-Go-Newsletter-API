@@ -192,7 +192,9 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	router.GET("/home", routes.Home)
 
 	router.GET("/login", routes.GetLogin)
-	router.POST("/login", routes.PostLogin)
+	router.POST("/login", func(c *gin.Context) {
+		routes.PostLogin(c, rh)
+	})
 
 	router.GET("/subscribers", rh.GetSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
