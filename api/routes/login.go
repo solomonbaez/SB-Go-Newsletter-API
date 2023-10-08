@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,7 +25,7 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 			Err(e).
 			Msg("Failed to validate credentials")
 
-		c.HTML(http.StatusSeeOther, "login.html", gin.H{"error": e.Error()})
+		c.HTML(http.StatusSeeOther, "login.html", gin.H{"error": fmt.Sprintf("Error: %s", e.Error())})
 	} else {
 		log.Info().
 			Str("id", *id).

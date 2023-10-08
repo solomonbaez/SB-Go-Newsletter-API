@@ -113,6 +113,7 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 
 	requestID := c.GetString("requestID")
 
+	var user_e error
 	query := "SELECT id, password_hash FROM users WHERE username=$1"
 	e := rh.DB.QueryRow(c, query, credentials.Username).Scan(&id, &password_hash)
 	if e != nil {
@@ -122,9 +123,13 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 
 		// prevent timing attacks!
 		password_hash = baseHash
+		user_e = e
 	}
 
 	if e := ValidatePHC(credentials.Password, password_hash); e != nil {
+		if user_e != nil {
+			e = user_e
+		}
 		return nil, e
 	}
 
