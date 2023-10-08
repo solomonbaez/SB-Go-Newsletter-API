@@ -677,6 +677,182 @@ func Test_PostNewsletter_Passes(t *testing.T) {
 	}
 }
 
+func Test_PostNewsletter_InvalidPassword_Fails(t *testing.T) {
+	// initialize
+	database, e := spawn_mock_database()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	cfg := mock.ConfigurationAttr{}
+	server := mock.New(cfg)
+	server.Start()
+	defer server.Stop()
+	port := server.PortNumber
+
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+	client.SmtpServer = "[::]"
+	client.SmtpPort = port
+	client.Sender = models.SubscriberEmail("user@test.com")
+
+	body := models.Body{
+		Title: "testing",
+		Text:  "testing",
+		Html:  "<p>testing</p>",
+	}
+	emailContent := models.Newsletter{
+		Recipient: models.SubscriberEmail("recipient@test.com"),
+		Content:   &body,
+	}
+	fmt.Printf(emailContent.Content.Html)
+
+	router := spawn_mock_router(database, client)
+
+	mock_username := "user"
+	mock_password := "password"
+	invalid_password := "drowssap"
+	data := `{"title":"test", "text":"test", "html":"<p>test</p>"}`
+	request, e := http.NewRequest("POST", "/newsletter", strings.NewReader(data))
+	if e != nil {
+		t.Fatal(e)
+	}
+	// I'm relatively unconcerned about basic auth failing in this integration test
+	// TODO sketch out a unit test for handlers.BasicAuth
+	request.SetBasicAuth(mock_username, mock_password)
+
+	mock_id := uuid.NewString()
+	invalid_password_hash, e := handlers.GeneratePHC(invalid_password)
+	if e != nil {
+		t.Fatal(e)
+	}
+	database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "password_hash"}).
+				AddRow(mock_id, invalid_password_hash),
+		)
+
+	app := spawn_app(router, request)
+	defer database.ExpectationsWereMet()
+	defer database.Close(app.context)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusBadRequest {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
+
+	expected_body := `{"error":"Failed to validate credentials: PHC are not equivalent","requestID":""}`
+	response_body := app.recorder.Body.String()
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+	}
+}
+
+func Test_PostNewsletter_InvalidNewsletter_Fails(t *testing.T) {
+	// // initialization
+	var database pgxmock.PgxConnIface
+	var client *clients.SMTPClient
+	var router *gin.Engine
+	var request *http.Request
+	var app app
+	var e error
+
+	cfg := mock.ConfigurationAttr{}
+	server := mock.New(cfg)
+
+	mock_username := "user"
+	mock_password := "password"
+	mock_id := uuid.NewString()
+
+	test_cases := []*models.Body{
+		{
+			Title: "",
+			Text:  "testing",
+			Html:  "<p>testing</p>",
+		},
+		{
+			Title: "testing",
+			Text:  "",
+			Html:  "<p>testing</p>",
+		},
+		{
+			Title: "testing",
+			Text:  "testing",
+			Html:  "",
+		},
+	}
+	expected_responses := []string{
+		`{"error":"Failed to parse newsletter: field: Title cannot be empty","requestID":""}`,
+		`{"error":"Failed to parse newsletter: field: Text cannot be empty","requestID":""}`,
+		`{"error":"Failed to parse newsletter: field: Html cannot be empty","requestID":""}`,
+	}
+
+	for i, tc := range test_cases {
+		// initialize
+		database, e = spawn_mock_database()
+		if e != nil {
+			t.Fatal(e)
+		}
+
+		server.Start()
+		defer server.Stop()
+		port := server.PortNumber
+
+		client, e = spawn_mock_smtp_client()
+		if e != nil {
+			t.Fatal(e)
+		}
+		client.SmtpServer = "[::]"
+		client.SmtpPort = port
+		client.Sender = models.SubscriberEmail("user@test.com")
+
+		router = spawn_mock_router(database, client)
+
+		mock_password_hash, e := handlers.GeneratePHC(mock_password)
+		if e != nil {
+			t.Fatal(e)
+		}
+
+		data := fmt.Sprintf(`{"title":"%s", "text":"%s", "html":"%s"}`, tc.Title, tc.Text, tc.Html)
+		request, e = http.NewRequest("POST", "/newsletter", strings.NewReader(data))
+		if e != nil {
+			t.Fatal(e)
+		}
+		request.SetBasicAuth(mock_username, mock_password)
+
+		database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
+			WithArgs(pgxmock.AnyArg()).
+			WillReturnRows(
+				pgxmock.NewRows([]string{"id", "password_hash"}).
+					AddRow(mock_id, mock_password_hash),
+			)
+
+		database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
+			WithArgs(pgxmock.AnyArg()).
+			WillReturnRows(
+				pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
+					AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("TestUser"), time.Now(), "confirmed"),
+			)
+
+		app = spawn_app(router, request)
+		defer database.ExpectationsWereMet()
+		defer database.Close(app.context)
+
+		// tests
+		if status := app.recorder.Code; status != http.StatusBadRequest {
+			t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+		}
+
+		response_body := app.recorder.Body.String()
+		if response_body != expected_responses[i] {
+			t.Errorf("Expected body %v, but got %v", expected_responses[i], response_body)
+		}
+	}
+}
+
 func spawn_mock_database() (pgxmock.PgxConnIface, error) {
 	mock_db, e := pgxmock.NewConn()
 	if e != nil {
