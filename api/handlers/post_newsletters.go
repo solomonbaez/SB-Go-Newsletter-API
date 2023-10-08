@@ -69,7 +69,7 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClien
 	}
 
 	if e = ParseNewsletter(&body); e != nil {
-		response = "Could not send newsletter"
+		response = "Failed to parse newsletter"
 		HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
@@ -84,13 +84,13 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClien
 			HandleError(c, requestID, e, response, http.StatusConflict)
 			continue
 		}
-		if e = ParseNewsletter(newsletter); e != nil {
+		if e = ParseNewsletter(&newsletter); e != nil {
 			response = "Invalid newsletter"
 			HandleError(c, requestID, e, response, http.StatusBadRequest)
 			continue
 		}
 		if e = client.SendEmail(&newsletter); e != nil {
-			response = "Could not send newsletter"
+			response = "Failed to send newsletter"
 			HandleError(c, requestID, e, response, http.StatusInternalServerError)
 			continue
 		}
@@ -106,7 +106,7 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 	requestID := c.GetString("requestID")
 
 	query := "SELECT id, password_hash FROM users WHERE username=$1"
-	e := rh.DB.QueryRow(c, query, credentials.username).Scan(&id, password_hash)
+	e := rh.DB.QueryRow(c, query, credentials.username).Scan(&id, &password_hash)
 	if e != nil {
 		return nil, e
 	}
@@ -125,21 +125,12 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 
 func BasicAuth(c *gin.Context) (*Credentials, error) {
 	var e error
-
 	h := c.GetHeader("Authorization")
-	log.Info().
-		Str("h", h).
-		Msg("")
 
 	var encodedSegment string
 	if strings.HasPrefix(h, "Basic ") {
 		encodedSegment = strings.TrimPrefix(h, "Basic ")
 		encodedSegment = strings.TrimRight(encodedSegment, "=")
-
-		log.Info().
-			Str("seg", encodedSegment).
-			Msg("")
-
 		decodedSegment, e := base64.RawURLEncoding.DecodeString(encodedSegment)
 		if e != nil {
 			return nil, e

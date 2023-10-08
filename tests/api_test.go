@@ -11,7 +11,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	mock "github.com/mocktools/go-smtp-mock"
 	"github.com/pashagolub/pgxmock/v3"
+
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
@@ -595,6 +597,86 @@ func Test_ConfirmSubscriber_InvalidID_Fails(t *testing.T) {
 	}
 }
 
+func Test_PostNewsletter_Passes(t *testing.T) {
+	// initialize
+	database, e := spawn_mock_database()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	cfg := mock.ConfigurationAttr{}
+	server := mock.New(cfg)
+	server.Start()
+	defer server.Stop()
+	port := server.PortNumber
+
+	client, e := spawn_mock_smtp_client()
+	if e != nil {
+		t.Fatal(e)
+	}
+	client.SmtpServer = "[::]"
+	client.SmtpPort = port
+	client.Sender = models.SubscriberEmail("user@test.com")
+
+	body := models.Body{
+		Title: "testing",
+		Text:  "testing",
+		Html:  "<p>testing</p>",
+	}
+	emailContent := models.Newsletter{
+		Recipient: models.SubscriberEmail("recipient@test.com"),
+		Content:   &body,
+	}
+	fmt.Printf(emailContent.Content.Html)
+
+	router := spawn_mock_router(database, client)
+
+	mock_username := "user"
+	mock_password := "password"
+	data := `{"title":"test", "text":"test", "html":"<p>test</p>"}`
+	request, e := http.NewRequest("POST", "/newsletter", strings.NewReader(data))
+	if e != nil {
+		t.Fatal(e)
+	}
+	request.SetBasicAuth(mock_username, mock_password)
+
+	mock_id := uuid.NewString()
+	mock_password_hash, e := handlers.GeneratePHC(mock_password)
+	if e != nil {
+		t.Fatal(e)
+	}
+	database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "password_hash"}).
+				AddRow(mock_id, mock_password_hash),
+		)
+
+	database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
+				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("TestUser"), time.Now(), "confirmed"),
+		)
+
+	app := spawn_app(router, request)
+	defer database.ExpectationsWereMet()
+	defer database.Close(app.context)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusOK {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
+
+	expected_body := fmt.Sprintf(
+		`{"requestID":"","subscribers":[{"id":"%s","email":"test@test.com","name":"TestUser","status":"confirmed"}]}`, mock_id,
+	) + `{"message":"Emails successfully delivered","requestID":""}`
+	response_body := app.recorder.Body.String()
+	if response_body != expected_body {
+		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+	}
+}
+
 func spawn_mock_database() (pgxmock.PgxConnIface, error) {
 	mock_db, e := pgxmock.NewConn()
 	if e != nil {
@@ -626,6 +708,9 @@ func spawn_mock_router(db pgxmock.PgxConnIface, client *clients.SMTPClient) *gin
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
 	router.POST("/subscribe", func(c *gin.Context) {
 		rh.Subscribe(c, client)
+	})
+	router.POST("/newsletter", func(c *gin.Context) {
+		rh.PostNewsletter(c, client)
 	})
 
 	return router

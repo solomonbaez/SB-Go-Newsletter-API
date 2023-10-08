@@ -16,6 +16,7 @@ func TestMockEmail_ValidEmail_Passes(t *testing.T) {
 	server := mock.New(cfg)
 	server.Start()
 	port := server.PortNumber
+	defer server.Stop()
 
 	client := mockClient
 	client.SmtpPort = port
@@ -43,6 +44,7 @@ func TestMockEmail_NoRecipient_Fails(t *testing.T) {
 	server := mock.New(cfg)
 	server.Start()
 	port := server.PortNumber
+	defer server.Stop()
 
 	client := mockClient
 	client.SmtpPort = port
@@ -69,6 +71,7 @@ func TestMockEmail_InvalidRecipient_Fails(t *testing.T) {
 	server := mock.New(cfg)
 	server.Start()
 	port := server.PortNumber
+	defer server.Stop()
 
 	client := mockClient
 	client.SmtpPort = port
@@ -96,6 +99,7 @@ func TestMockEmail_InvalidBody_Fails(t *testing.T) {
 	server := mock.New(cfg)
 	server.Start()
 	port := server.PortNumber
+	defer server.Stop()
 
 	client := mockClient
 	client.SmtpPort = port
