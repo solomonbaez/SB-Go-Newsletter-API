@@ -26,6 +26,9 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 			Err(e).
 			Msg("Failed to validate credentials")
 
+		// secure and http-only to prevent man-in-the-middle attacks and jsx manipulation
+		c.SetCookie("error", e.Error(), 0, "login", "localhost", true, true)
+
 		c.HTML(http.StatusSeeOther, "login.html", gin.H{"error": fmt.Sprintf("Error: %s", e.Error())})
 	} else {
 		log.Info().

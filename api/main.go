@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
+	// TODO implement cookie sessions
+	// "github.com/gin-contrib/sessions"
+	// "github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
