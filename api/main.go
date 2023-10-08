@@ -190,11 +190,16 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/home", routes.Home)
+
+	router.GET("/login", routes.GetLogin)
+	router.POST("/login", routes.PostLogin)
+
 	router.GET("/subscribers", rh.GetSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
-	router.POST("/newsletter", func(c *gin.Context) { rh.PostNewsletter(c, client) })
 	router.POST("/subscribe", func(c *gin.Context) { rh.Subscribe(c, client) })
 	router.GET("/confirm/:token", rh.ConfirmSubscriber)
+
+	router.POST("/newsletter", func(c *gin.Context) { rh.PostNewsletter(c, client) })
 
 	// listener
 	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", app.port))
