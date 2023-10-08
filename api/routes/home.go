@@ -7,5 +7,5 @@ import (
 )
 
 func Home(c *gin.Context) {
-	c.HTML(http.StatusOK, "home.html", nil)
+	c.HTML(http.StatusOK, "home.html", gin.H{"title": "home"})
 }

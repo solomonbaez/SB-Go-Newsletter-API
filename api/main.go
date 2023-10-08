@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,6 +25,7 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
 )
 
 type App struct {
@@ -158,6 +160,15 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	// router
 	router := gin.Default()
 
+	// Get the absolute path to the "templates" directory
+	templatesDir, e := filepath.Abs("./api/templates")
+	if e != nil {
+		log.Fatal().Err(e).Msg("Failed to get the absolute path to templates")
+		return nil, nil, e
+	}
+
+	router.LoadHTMLGlob(filepath.Join(templatesDir, "*"))
+
 	// custom middleware
 	if enableTracing {
 		router.Use(TraceMiddleware())
@@ -178,6 +189,7 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	}
 
 	router.GET("/health", handlers.HealthCheck)
+	router.GET("/home", routes.Home)
 	router.GET("/subscribers", rh.GetSubscribers)
 	router.GET("/subscribers/:id", rh.GetSubscriberByID)
 	router.POST("/newsletter", func(c *gin.Context) { rh.PostNewsletter(c, client) })
