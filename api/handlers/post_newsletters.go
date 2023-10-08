@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
@@ -39,6 +40,13 @@ var params = HashParams{
 type Credentials struct {
 	username string
 	password string
+}
+
+var baseHash string
+
+func init() {
+	randomPassword := uuid.NewString()
+	baseHash, _ = GeneratePHC(randomPassword)
 }
 
 func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClient) {
@@ -108,7 +116,8 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 	query := "SELECT id, password_hash FROM users WHERE username=$1"
 	e := rh.DB.QueryRow(c, query, credentials.username).Scan(&id, &password_hash)
 	if e != nil {
-		return nil, e
+		// prevent timing attacks!
+		password_hash = baseHash
 	}
 
 	if e := ValidatePHC(credentials.password, password_hash); e != nil {

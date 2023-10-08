@@ -298,7 +298,7 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 	}
 }
 
-func Test_Subscribe(t *testing.T) {
+func Test_Subscribe_Passes(t *testing.T) {
 	// initialization
 	database, e := spawn_mock_database()
 	if e != nil {
