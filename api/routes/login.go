@@ -13,6 +13,7 @@ func GetLogin(c *gin.Context) {
 	c.HTML(http.StatusOK, "login.html", gin.H{"title": "login"})
 }
 
+// TODO investigate HMAC error authentication -> seemingly not necessary due to gin HTML-escaping
 func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 	credentials := &handlers.Credentials{
 		Username: c.PostForm("username"),

@@ -107,6 +107,7 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClien
 	c.JSON(http.StatusOK, gin.H{"requestID": requestID, "message": "Emails successfully delivered"})
 }
 
+// TODO Sanitize credentials again?
 func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credentials) (*string, error) {
 	var id string
 	var password_hash string

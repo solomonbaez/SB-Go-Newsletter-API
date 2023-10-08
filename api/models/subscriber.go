@@ -20,8 +20,8 @@ var (
 
 type Subscriber struct {
 	ID     string          `json:"id"`
-	Email  SubscriberEmail `json:"email"`
-	Name   SubscriberName  `json:"name"`
+	Email  SubscriberEmail `json:"email" binding:"required"`
+	Name   SubscriberName  `json:"name" binding:"required"`
 	Status string          `json:"status"`
 }
 
