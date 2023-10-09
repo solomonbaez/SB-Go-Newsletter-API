@@ -10,8 +10,8 @@ import (
 	"time"
 
 	// TODO implement cookie sessions
-	// "github.com/gin-contrib/sessions"
-	// "github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -162,6 +162,10 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	var e error
 	// router
 	router := gin.Default()
+
+	tmpSecret := []byte("verylongsecret")
+	store := cookie.NewStore(tmpSecret)
+	router.Use(sessions.Sessions("mysession", store))
 
 	// Get the absolute path to the "templates" directory
 	templatesDir, e := filepath.Abs("./api/templates")
