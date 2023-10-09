@@ -1,16 +1,22 @@
 package routes
 
 import (
-	"fmt"
 	"net/http"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
 func GetLogin(c *gin.Context) {
-	c.HTML(http.StatusOK, "login.html", gin.H{"title": "login"})
+	session := sessions.Default(c)
+	flashes := session.Flashes()
+
+	// clear flash messages
+	session.Save()
+
+	c.HTML(http.StatusOK, "login.html", gin.H{"flashes": flashes})
 }
 
 // TODO investigate HMAC error authentication -> seemingly not necessary due to gin HTML-escaping
@@ -26,10 +32,11 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 			Err(e).
 			Msg("Failed to validate credentials")
 
-		// secure and http-only to prevent man-in-the-middle attacks and jsx manipulation
-		c.SetCookie("error", e.Error(), 0, "login", "localhost", true, true)
+		session := sessions.Default(c)
+		session.AddFlash(e.Error())
+		session.Save()
 
-		c.HTML(http.StatusSeeOther, "login.html", gin.H{"error": fmt.Sprintf("Error: %s", e.Error())})
+		c.Redirect(http.StatusSeeOther, "login")
 	} else {
 		log.Info().
 			Str("id", *id).

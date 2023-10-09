@@ -163,9 +163,11 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	// router
 	router := gin.Default()
 
-	tmpSecret := []byte("verylongsecret")
-	store := cookie.NewStore(tmpSecret)
-	router.Use(sessions.Sessions("mysession", store))
+	// TODO migrate to cfg keys
+	storeKey := []byte("verylongsecret")
+
+	store := cookie.NewStore(storeKey)
+	router.Use(sessions.Sessions("cookies", store))
 
 	// Get the absolute path to the "templates" directory
 	templatesDir, e := filepath.Abs("./api/templates")
