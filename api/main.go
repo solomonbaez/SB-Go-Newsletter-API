@@ -12,6 +12,7 @@ import (
 	// TODO implement cookie sessions
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -166,8 +167,14 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	// TODO migrate to cfg keys
 	storeKey := []byte("verylongsecret")
 
-	store := cookie.NewStore(storeKey)
-	router.Use(sessions.Sessions("cookies", store))
+	cookieStore := cookie.NewStore(storeKey)
+	router.Use(sessions.Sessions("cookies", cookieStore))
+
+	redisStore, e := redis.NewStore(10, "tcp", "localhost:6379", "", storeKey)
+	if e != nil {
+		log.Fatal().Err(e).Msg("Failed to connect to redis")
+	}
+	router.Use(sessions.Sessions("admin", redisStore))
 
 	// Get the absolute path to the "templates" directory
 	templatesDir, e := filepath.Abs("./api/templates")
