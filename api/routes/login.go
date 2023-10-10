@@ -43,7 +43,7 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 			Str("id", *id).
 			Msg("login")
 
-		session.Set("user", id)
+		session.Set("user", credentials.Username)
 
 		c.Redirect(http.StatusAccepted, "dashboard")
 	}

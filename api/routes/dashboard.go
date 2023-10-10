@@ -5,16 +5,26 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	// "github.com/rs/zerolog/log"
-	// "github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
 func GetAdminDashboard(c *gin.Context) {
-	session := sessions.Default(c)
-	id := session.Get("user")
-	if id == nil {
+	s := sessions.Default(c)
+	session := RotateSession(c, s)
+	user := session.Get("user")
+
+	c.HTML(http.StatusOK, "dashboard.html", gin.H{"user": user})
+}
+
+func RotateSession(c *gin.Context, prv sessions.Session) sessions.Session {
+	user := prv.Get("user")
+	if user == nil {
 		c.Redirect(http.StatusSeeOther, "../login")
 	}
 
-	c.HTML(http.StatusOK, "dashboard.html", gin.H{"user": id})
+	new := sessions.Default(c)
+	new.Set("user", user)
+	new.Save()
+	prv.Clear()
+
+	return new
 }
