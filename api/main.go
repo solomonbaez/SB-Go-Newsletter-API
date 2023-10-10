@@ -11,7 +11,7 @@ import (
 
 	// TODO implement cookie sessions
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
+	// "github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -169,8 +169,9 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	// TODO migrate to cfg keys
 	storeKey := []byte("verylongsecret")
 
-	cookieStore := cookie.NewStore(storeKey)
-	router.Use(sessions.Sessions("cookies", cookieStore))
+	// TODO investigate cookie + redis integration
+	// cookieStore := cookie.NewStore(storeKey)
+	// router.Use(sessions.Sessions("cookies", cookieStore))
 
 	redisStore, e := redis.NewStore(10, app.redis.Conn, app.redis.ConnectionString(), "", storeKey)
 	if e != nil {

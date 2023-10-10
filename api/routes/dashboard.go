@@ -11,7 +11,10 @@ import (
 
 func GetAdminDashboard(c *gin.Context) {
 	session := sessions.Default(c)
-	flashes := session.Flashes()
+	id := session.Get("user")
+	if id == nil {
+		c.Redirect(http.StatusSeeOther, "../login")
+	}
 
-	c.HTML(http.StatusOK, "dashboard.html", gin.H{"flashes": flashes})
+	c.HTML(http.StatusOK, "dashboard.html", gin.H{"user": id})
 }

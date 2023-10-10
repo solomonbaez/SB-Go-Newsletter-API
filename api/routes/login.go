@@ -21,6 +21,8 @@ func GetLogin(c *gin.Context) {
 
 // TODO investigate HMAC error authentication -> seemingly not necessary due to gin HTML-escaping
 func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
+	session := sessions.Default(c)
+
 	credentials := &handlers.Credentials{
 		Username: c.PostForm("username"),
 		Password: c.PostForm("password"),
@@ -32,7 +34,6 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 			Err(e).
 			Msg("Failed to validate credentials")
 
-		session := sessions.Default(c)
 		session.AddFlash(e.Error())
 		session.Save()
 
@@ -42,6 +43,8 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 			Str("id", *id).
 			Msg("login")
 
-		c.Redirect(http.StatusSeeOther, "home")
+		session.Set("user", id)
+
+		c.Redirect(http.StatusAccepted, "dashboard")
 	}
 }
