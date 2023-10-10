@@ -6,32 +6,65 @@
         <title>Login</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {
+                margin: 0;
+                text-align: center;
+                font-family: "Merriweather", serif;
+                background-color: #111;
+                color: #fff;
+            }
+
+            section {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .form_container {
+                margin: 50px;
+                display: flex;
+                flex-direction: column;
+            }
+
+            label {
+                color: blanchedalmond;
+            }
+            p {
+                color: blanchedalmond;
+            }
+            text {
+                background-color: blanchedalmond;
+            }
+        </style>
     </head>
     <body>
         {{if .flashes}}
-            <div>
+            <section>
                 <p>Error: {{.flashes}}</p>
-            </div>
+            </section>
         {{end}}
 
-        <form action="/login" method="post">
-            <label>Username
-                <input
-                    type="text"
-                    placeholder="Enter username"
-                    name="username"
-                >
-            </label>
+        <div class="form_container">
+            <form action="/login" method="post">
+                <label>Username
+                    <input
+                        type="text"
+                        placeholder="Enter username"
+                        name="username"
+                    >
+                </label>
 
-            <label>Password
-                <input
-                    type="password"
-                    placeholder="Enter password" 
-                    name="password"
-                >
-            </label>
+                <label>Password
+                    <input
+                        type="password"
+                        placeholder="Enter password" 
+                        name="password"
+                    >
+                </label>
 
-            <button type="submit">Login</button>
-        </form>
+                <button type="submit">Login</button>
+            </form>
+        </div>
     </body>
 </html>

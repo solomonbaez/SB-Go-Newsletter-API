@@ -13,5 +13,5 @@ func GetAdminDashboard(c *gin.Context) {
 	session := sessions.Default(c)
 	flashes := session.Flashes()
 
-	c.JSON(http.StatusOK, gin.H{"flashes": flashes})
+	c.HTML(http.StatusOK, "dashboard.html", gin.H{"flashes": flashes})
 }
