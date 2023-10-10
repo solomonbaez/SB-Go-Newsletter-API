@@ -214,10 +214,11 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 		routes.PostLogin(c, rh)
 	})
 
-	router.GET("/subscribers", rh.GetSubscribers)
-	router.GET("/subscribers/:id", rh.GetSubscriberByID)
-	router.POST("/subscribe", func(c *gin.Context) { rh.Subscribe(c, client) })
-	router.GET("/confirm/:token", rh.ConfirmSubscriber)
+	router.GET("/admin/dashboard", routes.GetAdminDashboard)
+	router.GET("/admin/subscribers", rh.GetSubscribers)
+	router.GET("/admin/subscribers/:id", rh.GetSubscriberByID)
+	router.POST("/admin/subscribe", func(c *gin.Context) { rh.Subscribe(c, client) })
+	router.GET("confirm/:token", rh.ConfirmSubscriber)
 
 	router.POST("/newsletter", func(c *gin.Context) { rh.PostNewsletter(c, client) })
 
