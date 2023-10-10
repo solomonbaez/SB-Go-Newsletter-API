@@ -34,6 +34,7 @@ import (
 
 type App struct {
 	database configs.DBSettings
+	redis    configs.RedisSettings
 	port     uint16
 }
 
@@ -56,6 +57,7 @@ func init() {
 	}
 	app = &App{
 		appCFG.Database,
+		appCFG.Redis,
 		appCFG.Port,
 	}
 
@@ -170,7 +172,7 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	cookieStore := cookie.NewStore(storeKey)
 	router.Use(sessions.Sessions("cookies", cookieStore))
 
-	redisStore, e := redis.NewStore(10, "tcp", "localhost:6379", "", storeKey)
+	redisStore, e := redis.NewStore(10, app.redis.Conn, app.redis.ConnectionString(), "", storeKey)
 	if e != nil {
 		log.Fatal().Err(e).Msg("Failed to connect to redis")
 	}

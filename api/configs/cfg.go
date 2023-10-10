@@ -15,6 +15,7 @@ func init() {
 // APPLICATION
 type AppSettings struct {
 	Database DBSettings
+	Redis    RedisSettings
 	Port     uint16
 }
 
@@ -33,6 +34,16 @@ func (db DBSettings) ConnectionString() string {
 	)
 }
 
+type RedisSettings struct {
+	host string
+	port string
+	Conn string
+}
+
+func (r RedisSettings) ConnectionString() string {
+	return fmt.Sprintf("%s:%s", r.host, r.port)
+}
+
 func ConfigureApp() (*AppSettings, error) {
 	if e := viper.ReadInConfig(); e != nil {
 		return nil, e
@@ -46,10 +57,17 @@ func ConfigureApp() (*AppSettings, error) {
 		viper.GetString("database.database_name"),
 	}
 
+	redis := RedisSettings{
+		viper.GetString("redis.host"),
+		viper.GetString("redis.port"),
+		viper.GetString("redis.conn"),
+	}
+
 	port := viper.GetUint16("application_port")
 
 	settings := &AppSettings{
 		Database: database,
+		Redis:    redis,
 		Port:     port,
 	}
 

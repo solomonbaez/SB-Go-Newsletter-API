@@ -11,3 +11,7 @@ email:
   username: "test"
   password: "password"
   sender: "test@test.com"
+redis:
+  host: "localhost"
+  port: "6379"
+  conn: "tcp"
