@@ -45,6 +45,6 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 
 		session.Set("user", credentials.Username)
 
-		c.Redirect(http.StatusAccepted, "dashboard")
+		c.Redirect(http.StatusSeeOther, "dashboard")
 	}
 }
