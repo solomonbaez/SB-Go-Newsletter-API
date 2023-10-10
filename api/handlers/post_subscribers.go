@@ -13,6 +13,8 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
+const tokenLength = 25
+
 var confirmationLink string
 var confirmation = &models.Newsletter{}
 var loader *Loader
@@ -94,7 +96,7 @@ func insertSubscriber(c *gin.Context, client *clients.SMTPClient, tx pgx.Tx, sub
 		return e
 	}
 
-	token, e := GenerateCSPRNG()
+	token, e := GenerateCSPRNG(tokenLength)
 	if e != nil {
 		return e
 	}

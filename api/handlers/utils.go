@@ -17,7 +17,6 @@ import (
 
 // TODO switch to cfg baseURL
 const baseURL = "http://localhost:8000"
-const tokenLength = 25
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 type Database interface {
@@ -58,8 +57,8 @@ func storeToken(c *gin.Context, tx pgx.Tx, id string, token string) error {
 	return nil
 }
 
-func GenerateCSPRNG() (string, error) {
-	b := make([]byte, tokenLength)
+func GenerateCSPRNG(tokenLen int) (string, error) {
+	b := make([]byte, tokenLen)
 
 	maxIndex := big.NewInt(int64(len(charset)))
 

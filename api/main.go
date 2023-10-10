@@ -165,11 +165,11 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	// router
 	router := gin.Default()
 
-	key1, e := handlers.GenerateCSPRNG()
+	key1, e := handlers.GenerateCSPRNG(32)
 	if e != nil {
 		return nil, nil, e
 	}
-	key2, e := handlers.GenerateCSPRNG()
+	key2, e := handlers.GenerateCSPRNG(32)
 	if e != nil {
 		return nil, nil, e
 	}

@@ -8,8 +8,9 @@ import (
 )
 
 func GetAdminDashboard(c *gin.Context) {
-	s := sessions.Default(c)
-	session := RotateSession(c, s)
+	// s := sessions.Default(c)
+	// session := RotateSession(c, s)
+	session := sessions.Default(c)
 	user := session.Get("user")
 
 	c.HTML(http.StatusOK, "dashboard.html", gin.H{"user": user})
