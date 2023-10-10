@@ -58,7 +58,7 @@ func storeToken(c *gin.Context, tx pgx.Tx, id string, token string) error {
 	return nil
 }
 
-func generateCSPRNG() (string, error) {
+func GenerateCSPRNG() (string, error) {
 	b := make([]byte, tokenLength)
 
 	maxIndex := big.NewInt(int64(len(charset)))

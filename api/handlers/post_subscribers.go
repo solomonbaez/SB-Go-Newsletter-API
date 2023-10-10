@@ -94,7 +94,7 @@ func insertSubscriber(c *gin.Context, client *clients.SMTPClient, tx pgx.Tx, sub
 		return e
 	}
 
-	token, e := generateCSPRNG()
+	token, e := GenerateCSPRNG()
 	if e != nil {
 		return e
 	}
