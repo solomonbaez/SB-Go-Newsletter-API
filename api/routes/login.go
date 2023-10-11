@@ -37,6 +37,7 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 		session.AddFlash(e.Error())
 		session.Save()
 
+		// TODO make this a client side, no redirect operation
 		c.Redirect(http.StatusSeeOther, "login")
 	} else {
 		log.Info().

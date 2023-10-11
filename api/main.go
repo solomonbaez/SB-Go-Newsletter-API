@@ -215,6 +215,7 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 
 	// define admin group
 	admin := router.Group("/admin")
+	admin.Use(AdminMiddleware())
 	admin.GET("/dashboard", routes.GetAdminDashboard)
 	admin.GET("/subscribers", rh.GetSubscribers)
 	admin.GET("/subscribers/:id", rh.GetSubscriberByID)
@@ -269,6 +270,20 @@ func TraceMiddleware() gin.HandlerFunc {
 		defer span.End()
 
 		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
+}
+
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		user := session.Get("user")
+		if user == nil {
+			c.Redirect(http.StatusSeeOther, "../login")
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }
