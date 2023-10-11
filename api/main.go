@@ -217,6 +217,8 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	admin := router.Group("/admin")
 	admin.Use(AdminMiddleware())
 	admin.GET("/dashboard", routes.GetAdminDashboard)
+	admin.GET("/password", routes.GetChangePassword)
+
 	admin.GET("/subscribers", rh.GetSubscribers)
 	admin.GET("/subscribers/:id", rh.GetSubscriberByID)
 	admin.POST("/newsletter", func(c *gin.Context) { rh.PostNewsletter(c, client) })
