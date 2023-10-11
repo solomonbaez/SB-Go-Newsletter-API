@@ -10,7 +10,8 @@ import (
 func GetAdminDashboard(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get("user")
+	flashes := session.Flashes()
 	session.Save()
 
-	c.HTML(http.StatusOK, "dashboard.html", gin.H{"user": user})
+	c.HTML(http.StatusOK, "dashboard.html", gin.H{"flashes": flashes, "user": user})
 }

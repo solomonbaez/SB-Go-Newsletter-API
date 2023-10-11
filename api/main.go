@@ -218,6 +218,7 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	admin.Use(AdminMiddleware())
 	admin.GET("/dashboard", routes.GetAdminDashboard)
 	admin.GET("/password", routes.GetChangePassword)
+	admin.POST("/password", func(c *gin.Context) { routes.PostChangePassword(c, rh) })
 
 	admin.GET("/subscribers", rh.GetSubscribers)
 	admin.GET("/subscribers/:id", rh.GetSubscriberByID)

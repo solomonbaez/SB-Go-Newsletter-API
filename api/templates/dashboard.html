@@ -16,14 +16,32 @@
                 align-items: center;
                 height: 100vh;
             }
+            section {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            div {
+                margin: 50px;
+                display: flex;
+                flex-direction: column;
+            }
+            p {
+                color: blanchedalmond;
+            }
             h1 {
                 color:blanchedalmond;
             }
         </style>
     </head>
     <body>
-        <main>
+        {{if .flashes}}
+            <section>
+                <p>{{.flashes}}</p>
+            </section>
+        {{end}}
+        <div>
             <h1>Welcome, {{.user}}</h1>
-        </main>
+        </div>
     </body>
 </html>
