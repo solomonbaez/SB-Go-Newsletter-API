@@ -213,6 +213,13 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 		})
 	}
 
+	// define admin group
+	admin := router.Group("/admin")
+	admin.GET("/dashboard", routes.GetAdminDashboard)
+	admin.GET("/subscribers", rh.GetSubscribers)
+	admin.GET("/subscribers/:id", rh.GetSubscriberByID)
+	admin.POST("/newsletter", func(c *gin.Context) { rh.PostNewsletter(c, client) })
+
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/home", routes.Home)
 
@@ -221,13 +228,8 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 		routes.PostLogin(c, rh)
 	})
 
-	router.GET("/admin/dashboard", routes.GetAdminDashboard)
-	router.GET("/admin/subscribers", rh.GetSubscribers)
-	router.GET("/admin/subscribers/:id", rh.GetSubscriberByID)
-	router.POST("/admin/subscribe", func(c *gin.Context) { rh.Subscribe(c, client) })
-	router.GET("confirm/:token", rh.ConfirmSubscriber)
-
-	router.POST("/newsletter", func(c *gin.Context) { rh.PostNewsletter(c, client) })
+	router.POST("/subscribe", func(c *gin.Context) { rh.Subscribe(c, client) })
+	router.GET("/confirm/:token", rh.ConfirmSubscriber)
 
 	// listener
 	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", app.port))
