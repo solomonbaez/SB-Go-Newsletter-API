@@ -44,6 +44,7 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 			Msg("login")
 
 		session.Set("user", credentials.Username)
+		session.Save()
 
 		c.Redirect(http.StatusSeeOther, "admin/dashboard")
 	}
