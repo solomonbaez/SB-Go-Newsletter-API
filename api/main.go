@@ -283,6 +283,7 @@ func AdminMiddleware() gin.HandlerFunc {
 		session := sessions.Default(c)
 		user := session.Get("user")
 		if user == nil {
+			c.Header("X-Redirect", "Forbidden")
 			c.Redirect(http.StatusSeeOther, "../login")
 			c.Abort()
 			return

@@ -33,7 +33,7 @@ func Test_GetLogin(t *testing.T) {
 	app := new_mock_app()
 	defer app.database.Close(app.context)
 
-	request, e := http.NewRequest("GET", "/admin/login", nil)
+	request, e := http.NewRequest("GET", "/login", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -61,7 +61,7 @@ func Test_PostLogin_Passes(t *testing.T) {
 	form_data := data.Encode()
 
 	// Create a POST request with the form data
-	request, e := http.NewRequest("POST", "/admin/login", strings.NewReader(form_data))
+	request, e := http.NewRequest("POST", "/login", strings.NewReader(form_data))
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -106,7 +106,7 @@ func Test_PostLogin_InvalidCredentials_Fails(t *testing.T) {
 	form_data := data.Encode()
 
 	// Create a POST request with the form data
-	request, e := http.NewRequest("POST", "/admin/login", strings.NewReader(form_data))
+	request, e := http.NewRequest("POST", "/login", strings.NewReader(form_data))
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -165,12 +165,14 @@ func new_mock_app() (app App) {
 	router.LoadHTMLGlob(filepath.Join("../api/templates", "*"))
 
 	router.Use(sessions.Sessions("test", store))
-
-	admin := router.Group("/admin")
-	admin.GET("/login", routes.GetLogin)
-	admin.POST("/login", func(c *gin.Context) {
+	router.GET("/login", routes.GetLogin)
+	router.POST("/login", func(c *gin.Context) {
 		routes.PostLogin(c, rh)
 	})
+
+	admin := router.Group("/admin")
+	admin.Use(AdminMiddleware())
+	admin.GET("/dashboard", routes.GetAdminDashboard)
 
 	app = App{
 		router:   router,
@@ -188,4 +190,19 @@ func (app *App) new_mock_request(request *http.Request) {
 
 	context, _ := gin.CreateTestContext(recorder)
 	app.context = context
+}
+
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		user := session.Get("user")
+		if user == nil {
+			c.Header("X-Redirect", "Forbidden")
+			c.Redirect(http.StatusSeeOther, "../login")
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
 }
