@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 
 	"testing"
@@ -15,34 +16,26 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
 )
 
-// // Reference
-// type app struct {
-// 	recorder *httptest.ResponseRecorder
-// 	context  *gin.Context
-// 	router   *gin.Engine
-// }
+// Reference
+type App struct {
+	recorder *httptest.ResponseRecorder
+	context  *gin.Context
+	router   *gin.Engine
+	database pgxmock.PgxConnIface
+	client   *clients.SMTPClient
+}
 
 func Test_GetLogin(t *testing.T) {
 	// initialize
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	router := admin_spawn_mock_router(database, client)
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
 	request, e := http.NewRequest("GET", "/admin/login", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
@@ -52,31 +45,21 @@ func Test_GetLogin(t *testing.T) {
 
 func Test_PostLogin_Passes(t *testing.T) {
 	// initialize
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	router := admin_spawn_mock_router(database, client)
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
 	request, e := http.NewRequest("POST", "/admin/login", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 
-	database.ExpectQuery(`SELECT id, password_hash FROM users WHERE user = $1`).
+	app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE user = $1`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "password_hash"}),
 		)
 
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusSeeOther {
@@ -84,28 +67,23 @@ func Test_PostLogin_Passes(t *testing.T) {
 	}
 }
 
-// // Reference
-// func spawn_mock_database() (pgxmock.PgxConnIface, error) {
-// 	mock_db, e := pgxmock.NewConn()
-// 	if e != nil {
-// 		return nil, e
-// 	}
+func new_mock_database() (database pgxmock.PgxConnIface) {
+	database, _ = pgxmock.NewConn()
 
-// 	return mock_db, nil
-// }
+	return database
+}
 
-// func spawn_mock_smtp_client() (*clients.SMTPClient, error) {
-// 	cfg := "test"
-// 	client, e := clients.NewSMTPClient(&cfg)
-// 	if e != nil {
-// 		return nil, e
-// 	}
+func new_mock_client() (client *clients.SMTPClient) {
+	cfg := "test"
+	client, _ = clients.NewSMTPClient(&cfg)
 
-// 	return client, nil
-// }
+	return client
+}
 
-func admin_spawn_mock_router(db pgxmock.PgxConnIface, client *clients.SMTPClient) *gin.Engine {
-	rh := handlers.NewRouteHandler(db)
+func new_mock_app() (app App) {
+	database := new_mock_database()
+	client := new_mock_client()
+	rh := handlers.NewRouteHandler(database)
 
 	key1, _ := handlers.GenerateCSPRNG(32)
 	key2, _ := handlers.GenerateCSPRNG(32)
@@ -126,17 +104,20 @@ func admin_spawn_mock_router(db pgxmock.PgxConnIface, client *clients.SMTPClient
 		routes.PostLogin(c, rh)
 	})
 
-	return router
+	app = App{
+		router:   router,
+		database: database,
+		client:   client,
+	}
+
+	return app
 }
 
-// func spawn_app(router *gin.Engine, request *http.Request) app {
-// 	recorder := httptest.NewRecorder()
-// 	router.ServeHTTP(recorder, request)
-// 	context, _ := gin.CreateTestContext(recorder)
+func (app *App) new_mock_request(request *http.Request) {
+	recorder := httptest.NewRecorder()
+	app.recorder = recorder
+	app.router.ServeHTTP(recorder, request)
 
-// 	return app{
-// 		recorder,
-// 		context,
-// 		router,
-// 	}
-// }
+	context, _ := gin.CreateTestContext(recorder)
+	app.context = context
+}
