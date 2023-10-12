@@ -38,7 +38,7 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 		session.Save()
 
 		// TODO make this a client side, no redirect operation
-		c.Header("X-Redirect", "Forbidden"+" "+e.Error()+" "+credentials.Username)
+		c.Header("X-Redirect", "Forbidden")
 		c.Redirect(http.StatusSeeOther, "login")
 		return
 	}
