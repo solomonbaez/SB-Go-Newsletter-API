@@ -189,10 +189,11 @@ func new_mock_app() (app App) {
 	})
 
 	admin := router.Group("/admin")
-	// admin.Use(AdminMiddleware())
 	admin.GET("/dashboard", func(c *gin.Context) {
+		// mock middleware behavior
 		session := sessions.Default(c)
 		session.Set("user", "user")
+		mock_admin_middleware(c)
 		routes.GetAdminDashboard(c)
 	})
 
@@ -217,17 +218,13 @@ func (app *App) new_mock_request(request *http.Request) {
 	app.router.ServeHTTP(app.recorder, request)
 }
 
-// func AdminMiddleware() gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		session := sessions.Default(c)
-// 		user := session.Get("user")
-// 		if user == nil {
-// 			c.Header("X-Redirect", "Forbidden")
-// 			c.Redirect(http.StatusSeeOther, "../login")
-// 			c.Abort()
-// 			return
-// 		}
-
-// 		c.Next()
-// 	}
-// }
+func mock_admin_middleware(c *gin.Context) {
+	session := sessions.Default(c)
+	user := session.Get("user")
+	if user == nil {
+		c.Header("X-Redirect", "Forbidden")
+		c.Redirect(http.StatusSeeOther, "../login")
+		c.Abort()
+		return
+	}
+}
