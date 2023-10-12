@@ -140,7 +140,9 @@ func Test_GetAdminDashboard_Passes(t *testing.T) {
 	app := new_mock_app()
 	defer app.database.Close(app.context)
 
-	request, e := http.NewRequest("GET", "/admin/dashboard", nil)
+	// this is not a precise mock of the behvior due to param injection
+	// but the end-to-end behavior is exact
+	request, e := http.NewRequest("GET", "/admin/dashboard/authenticated", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -150,6 +152,32 @@ func Test_GetAdminDashboard_Passes(t *testing.T) {
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
+}
+
+func Test_GetAdminDashboard_NoAuth_Fails(t *testing.T) {
+	// initialize
+	app := new_mock_app()
+	defer app.database.Close(app.context)
+
+	// mock_admin_middleware(app.context)
+
+	request, e := http.NewRequest("GET", "/admin/dashboard/notauthenticated", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	app.new_mock_request(request)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusSeeOther {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
+
+	header := app.recorder.Header()
+	redirect := header.Get("X-Redirect")
+	if redirect != "Forbidden" {
+		t.Errorf("Expected header %s, but got %s", "Forbidden", redirect)
 	}
 }
 
@@ -189,10 +217,12 @@ func new_mock_app() (app App) {
 	})
 
 	admin := router.Group("/admin")
-	admin.GET("/dashboard", func(c *gin.Context) {
-		// mock middleware behavior
-		session := sessions.Default(c)
-		session.Set("user", "user")
+	admin.GET("/dashboard/:a", func(c *gin.Context) {
+		a := c.Param("a")
+		if a == "authenticated" {
+			session := sessions.Default(c)
+			session.Set("user", "user")
+		}
 		mock_admin_middleware(c)
 		routes.GetAdminDashboard(c)
 	})
