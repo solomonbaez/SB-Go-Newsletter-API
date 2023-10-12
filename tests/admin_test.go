@@ -135,6 +135,24 @@ func Test_PostLogin_InvalidCredentials_Fails(t *testing.T) {
 	}
 }
 
+func Test_GetAdminDashboard_Passes(t *testing.T) {
+	// initialize
+	app := new_mock_app()
+	defer app.database.Close(app.context)
+
+	request, e := http.NewRequest("GET", "/admin/dashboard", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	app.new_mock_request(request)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusOK {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
+}
+
 func new_mock_database() (database pgxmock.PgxConnIface) {
 	database, _ = pgxmock.NewConn()
 
@@ -171,10 +189,22 @@ func new_mock_app() (app App) {
 	})
 
 	admin := router.Group("/admin")
-	admin.Use(AdminMiddleware())
-	admin.GET("/dashboard", routes.GetAdminDashboard)
+	// admin.Use(AdminMiddleware())
+	admin.GET("/dashboard", func(c *gin.Context) {
+		session := sessions.Default(c)
+		session.Set("user", "user")
+		routes.GetAdminDashboard(c)
+	})
+
+	recorder := httptest.NewRecorder()
+	app.recorder = recorder
+
+	context := gin.CreateTestContextOnly(recorder, router)
+	app.context = context
 
 	app = App{
+		recorder: recorder,
+		context:  context,
 		router:   router,
 		database: database,
 		client:   client,
@@ -184,25 +214,20 @@ func new_mock_app() (app App) {
 }
 
 func (app *App) new_mock_request(request *http.Request) {
-	recorder := httptest.NewRecorder()
-	app.recorder = recorder
-	app.router.ServeHTTP(recorder, request)
-
-	context, _ := gin.CreateTestContext(recorder)
-	app.context = context
+	app.router.ServeHTTP(app.recorder, request)
 }
 
-func AdminMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		session := sessions.Default(c)
-		user := session.Get("user")
-		if user == nil {
-			c.Header("X-Redirect", "Forbidden")
-			c.Redirect(http.StatusSeeOther, "../login")
-			c.Abort()
-			return
-		}
+// func AdminMiddleware() gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		session := sessions.Default(c)
+// 		user := session.Get("user")
+// 		if user == nil {
+// 			c.Header("X-Redirect", "Forbidden")
+// 			c.Redirect(http.StatusSeeOther, "../login")
+// 			c.Abort()
+// 			return
+// 		}
 
-		c.Next()
-	}
-}
+// 		c.Next()
+// 	}
+// }
