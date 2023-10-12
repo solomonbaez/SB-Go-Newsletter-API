@@ -39,14 +39,15 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 
 		// TODO make this a client side, no redirect operation
 		c.Redirect(http.StatusSeeOther, "login")
-	} else {
-		log.Info().
-			Str("id", *id).
-			Msg("login")
-
-		session.Set("user", credentials.Username)
-		session.Save()
-
-		c.Redirect(http.StatusSeeOther, "admin/dashboard")
+		return
 	}
+
+	log.Info().
+		Str("id", *id).
+		Msg("login")
+
+	session.Set("user", credentials.Username)
+	session.Save()
+
+	c.Redirect(http.StatusSeeOther, "admin/dashboard")
 }

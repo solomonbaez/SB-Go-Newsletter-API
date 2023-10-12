@@ -34,6 +34,7 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.Save()
 
 		c.Redirect(http.StatusSeeOther, "password")
+		return
 	}
 
 	newPassword := c.PostForm("new_password")
@@ -48,7 +49,20 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.Save()
 
 		c.Redirect(http.StatusSeeOther, "password")
+		return
 	}
+	if e = ParsePassword(newPassword); e != nil {
+		log.Error().
+			Err(e).
+			Msg("Failed to parse password")
+
+		session.AddFlash(e.Error())
+		session.Save()
+
+		c.Redirect(http.StatusSeeOther, "password")
+		return
+	}
+
 	newPHC, e := handlers.GeneratePHC(newPassword)
 	if e != nil {
 		log.Error().
@@ -59,6 +73,7 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.Save()
 
 		c.Redirect(http.StatusSeeOther, "password")
+		return
 	}
 
 	if e = ChangePassword(c, rh, id, newPHC); e != nil {
@@ -70,6 +85,7 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.Save()
 
 		c.Redirect(http.StatusSeeOther, "password")
+		return
 	}
 
 	log.Info().
@@ -89,4 +105,26 @@ func ChangePassword(c *gin.Context, rh *handlers.RouteHandler, id *string, newPH
 	}
 
 	return
+}
+
+// ParseField dependency injection
+func ParsePassword(password string) error {
+	var e error
+
+	// sanitize password
+	if _, e := handlers.ParseField(password); e != nil {
+		return e
+	}
+
+	// parse password length per OWASP minimum requirements
+	if len(password) <= 12 {
+		e = errors.New("password must be longer than 12 characters")
+		return e
+	}
+	if len(password) >= 128 {
+		e = errors.New("password must be shorter than 128 characters")
+		return e
+	}
+
+	return nil
 }
