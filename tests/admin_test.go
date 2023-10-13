@@ -197,6 +197,79 @@ func Test_GetChangePassword_Passes(t *testing.T) {
 	}
 }
 
+func Test_GetChangePassword_NoAuth_Fails(t *testing.T) {
+	// initialize
+	app := new_mock_app()
+	defer app.database.Close(app.context)
+
+	request, e := http.NewRequest("GET", "/admin/password/notauthenticated", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	app.new_mock_request(request)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusSeeOther {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	}
+
+	header := app.recorder.Header()
+	redirect := header.Get("X-Redirect")
+	if redirect != "Forbidden" {
+		t.Errorf("Expected header %s, but got %s", "Forbidden", redirect)
+	}
+}
+
+func Test_PostChangePassword_Passes(t *testing.T) {
+	// initialize
+	app := new_mock_app()
+	defer app.database.Close(app.context)
+
+	prv_password := "user"
+	new_password := "passwordthatislongerthan12characters"
+
+	// Create a URL-encoded form data string
+	data := url.Values{}
+	data.Set("current_password", prv_password)
+	data.Set("new_password", new_password)
+	data.Set("new_password_confirm", new_password)
+	form_data := data.Encode()
+
+	// Create a POST request with the form data
+	request, e := http.NewRequest("POST", "/admin/password/authenticated", strings.NewReader(form_data))
+	if e != nil {
+		t.Fatal(e)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	mock_id := uuid.NewString()
+	prv_password_hash, _ := handlers.GeneratePHC(prv_password)
+	app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "password_hash"}).
+				AddRow(mock_id, prv_password_hash),
+		)
+
+	// new_password_hash, _ := handlers.GeneratePHC(new_password)
+	app.database.ExpectExec(`UPDATE users SET`).
+		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	app.new_mock_request(request)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusSeeOther {
+		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
+	}
+	header := app.recorder.Header()
+	redirect := header.Get("X-Redirect")
+	if redirect != "Password change" {
+		t.Errorf("Expected header %s, but got %s", "Password change", redirect)
+	}
+}
+
 func new_mock_database() (database pgxmock.PgxConnIface) {
 	database, _ = pgxmock.NewConn()
 
@@ -250,6 +323,15 @@ func new_mock_app() (app App) {
 		}
 		mock_admin_middleware(c)
 		routes.GetChangePassword(c)
+	})
+	admin.POST("/password/:a", func(c *gin.Context) {
+		a := c.Param("a")
+		if a == "authenticated" {
+			session := sessions.Default(c)
+			session.Set("user", "user")
+		}
+		mock_admin_middleware(c)
+		routes.PostChangePassword(c, rh)
 	})
 
 	recorder := httptest.NewRecorder()

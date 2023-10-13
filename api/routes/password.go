@@ -33,6 +33,8 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.AddFlash(e.Error())
 		session.Save()
 
+		c.Header("X-Redirect", e.Error())
+
 		c.Redirect(http.StatusSeeOther, "password")
 		return
 	}
@@ -48,6 +50,8 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.AddFlash(e.Error())
 		session.Save()
 
+		c.Header("X-Redirect", e.Error())
+
 		c.Redirect(http.StatusSeeOther, "password")
 		return
 	}
@@ -58,6 +62,8 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 
 		session.AddFlash(e.Error())
 		session.Save()
+
+		c.Header("X-Redirect", e.Error())
 
 		c.Redirect(http.StatusSeeOther, "password")
 		return
@@ -72,6 +78,8 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.AddFlash(e.Error())
 		session.Save()
 
+		c.Header("X-Redirect", e.Error())
+
 		c.Redirect(http.StatusSeeOther, "password")
 		return
 	}
@@ -84,6 +92,8 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.AddFlash(e.Error())
 		session.Save()
 
+		c.Header("X-Redirect", e.Error())
+
 		c.Redirect(http.StatusSeeOther, "password")
 		return
 	}
@@ -91,6 +101,8 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 	log.Info().
 		Str("user", user).
 		Msg("Password has been changed")
+
+	c.Header("X-Redirect", "Password change")
 
 	session.AddFlash("Password has been changed")
 	session.Save()
