@@ -160,8 +160,6 @@ func Test_GetAdminDashboard_NoAuth_Fails(t *testing.T) {
 	app := new_mock_app()
 	defer app.database.Close(app.context)
 
-	// mock_admin_middleware(app.context)
-
 	request, e := http.NewRequest("GET", "/admin/dashboard/notauthenticated", nil)
 	if e != nil {
 		t.Fatal(e)
@@ -178,6 +176,24 @@ func Test_GetAdminDashboard_NoAuth_Fails(t *testing.T) {
 	redirect := header.Get("X-Redirect")
 	if redirect != "Forbidden" {
 		t.Errorf("Expected header %s, but got %s", "Forbidden", redirect)
+	}
+}
+
+func Test_GetChangePassword_Passes(t *testing.T) {
+	// initialize
+	app := new_mock_app()
+	defer app.database.Close(app.context)
+
+	request, e := http.NewRequest("GET", "/admin/password/authenticated", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	app.new_mock_request(request)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusOK {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
 	}
 }
 
@@ -225,6 +241,15 @@ func new_mock_app() (app App) {
 		}
 		mock_admin_middleware(c)
 		routes.GetAdminDashboard(c)
+	})
+	admin.GET("/password/:a", func(c *gin.Context) {
+		a := c.Param("a")
+		if a == "authenticated" {
+			session := sessions.Default(c)
+			session.Set("user", "user")
+		}
+		mock_admin_middleware(c)
+		routes.GetChangePassword(c)
 	})
 
 	recorder := httptest.NewRecorder()
