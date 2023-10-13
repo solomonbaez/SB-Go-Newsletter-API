@@ -14,7 +14,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v3"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
 )
@@ -25,7 +24,6 @@ type App struct {
 	context  *gin.Context
 	router   *gin.Engine
 	database pgxmock.PgxConnIface
-	client   *clients.SMTPClient
 }
 
 func Test_GetLogin(t *testing.T) {
@@ -281,7 +279,7 @@ func Test_PostChangePassword_UnconfirmedNewPassword_Fails(t *testing.T) {
 	data := url.Values{}
 	data.Set("current_password", prv_password)
 	data.Set("new_password", new_password)
-	data.Set("new_password_confirm", prv_password)
+	data.Set("new_password_confirm", "")
 	form_data := data.Encode()
 
 	// Create a POST request with the form data
@@ -369,83 +367,72 @@ func new_mock_database() (database pgxmock.PgxConnIface) {
 	return database
 }
 
-func new_mock_client() (client *clients.SMTPClient) {
-	cfg := "test"
-	client, _ = clients.NewSMTPClient(&cfg)
+// func new_mock_client() (client *clients.SMTPClient) {
+// 	cfg := "test"
+// 	client, _ = clients.NewSMTPClient(&cfg)
 
-	return client
-}
+// 	return client
+// }
 
-func new_mock_app() (app App) {
-	database := new_mock_database()
-	client := new_mock_client()
-	rh := handlers.NewRouteHandler(database)
+func new_mock_app() App {
+	var recorder *httptest.ResponseRecorder
+	var context *gin.Context
+	var database pgxmock.PgxConnIface
+	var rh *handlers.RouteHandler
+	var store cookie.Store
+	var admin *gin.RouterGroup
 
-	key1, _ := handlers.GenerateCSPRNG(32)
-	key2, _ := handlers.GenerateCSPRNG(32)
-	storeKeys := [][]byte{
-		[]byte(key1),
-		[]byte(key2),
-	}
-	store := cookie.NewStore(storeKeys...)
+	recorder = httptest.NewRecorder()
+	database = new_mock_database()
+	rh = handlers.NewRouteHandler(database)
 
 	router := gin.Default()
+	context = gin.CreateTestContextOnly(recorder, router)
 	router.LoadHTMLGlob(filepath.Join("../api/templates", "*"))
 
+	store = cookie.NewStore([]byte("test"))
 	router.Use(sessions.Sessions("test", store))
+
 	router.GET("/login", routes.GetLogin)
 	router.POST("/login", func(c *gin.Context) {
 		routes.PostLogin(c, rh)
 	})
 
-	admin := router.Group("/admin")
+	admin = router.Group("/admin")
 	admin.GET("/dashboard/:a", func(c *gin.Context) {
-		a := c.Param("a")
-		if a == "authenticated" {
-			session := sessions.Default(c)
-			session.Set("user", "user")
-		}
+		mock_login(c)
 		mock_admin_middleware(c)
 		routes.GetAdminDashboard(c)
 	})
 	admin.GET("/password/:a", func(c *gin.Context) {
-		a := c.Param("a")
-		if a == "authenticated" {
-			session := sessions.Default(c)
-			session.Set("user", "user")
-		}
+		mock_login(c)
 		mock_admin_middleware(c)
 		routes.GetChangePassword(c)
 	})
 	admin.POST("/password/:a", func(c *gin.Context) {
-		a := c.Param("a")
-		if a == "authenticated" {
-			session := sessions.Default(c)
-			session.Set("user", "user")
-		}
+		mock_login(c)
 		mock_admin_middleware(c)
 		routes.PostChangePassword(c, rh)
 	})
 
-	recorder := httptest.NewRecorder()
-	app.recorder = recorder
-
-	context := gin.CreateTestContextOnly(recorder, router)
-	app.context = context
-
-	app = App{
+	return App{
 		recorder: recorder,
 		context:  context,
 		router:   router,
 		database: database,
-		client:   client,
 	}
-
-	return app
 }
 
 func (app *App) new_mock_request(request *http.Request) {
 	app.router.ServeHTTP(app.recorder, request)
+}
+
+func mock_login(c *gin.Context) {
+	a := c.Param("a")
+	if a == "authenticated" {
+		session := sessions.Default(c)
+		session.Set("user", "user")
+	}
 }
 
 func mock_admin_middleware(c *gin.Context) {
