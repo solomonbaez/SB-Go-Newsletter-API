@@ -13,5 +13,7 @@ func Logout(c *gin.Context) {
 	session.AddFlash("logged out")
 	session.Save()
 
+	c.Header("X-Redirect", "Logged out")
+
 	c.Redirect(http.StatusSeeOther, "../login")
 }

@@ -167,7 +167,7 @@ func Test_GetAdminDashboard_NoAuth_Fails(t *testing.T) {
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusSeeOther {
-		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
 	}
 
 	header := app.recorder.Header()
@@ -209,7 +209,7 @@ func Test_GetChangePassword_NoAuth_Fails(t *testing.T) {
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusSeeOther {
-		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
 	}
 
 	header := app.recorder.Header()
@@ -361,6 +361,30 @@ func Test_PostChangePassword_InvalidNewPassword_Fails(t *testing.T) {
 	}
 }
 
+func Test_GetLogout_Passes(t *testing.T) {
+	// initialize
+	app := new_mock_app()
+	defer app.database.Close(app.context)
+
+	request, e := http.NewRequest("GET", "/admin/logout/authenticated", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	app.new_mock_request(request)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusSeeOther {
+		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
+	}
+
+	header := app.recorder.Header()
+	redirect := header.Get("X-Redirect")
+	if redirect != "Logged out" {
+		t.Errorf("Expected header %s, but got %s", "Logged out", redirect)
+	}
+}
+
 func new_mock_database() (database pgxmock.PgxConnIface) {
 	database, _ = pgxmock.NewConn()
 
@@ -413,6 +437,11 @@ func new_mock_app() App {
 		mock_login(c)
 		mock_admin_middleware(c)
 		routes.PostChangePassword(c, rh)
+	})
+	admin.GET("/logout/:a", func(c *gin.Context) {
+		mock_login(c)
+		mock_admin_middleware(c)
+		routes.Logout(c)
 	})
 
 	return App{
