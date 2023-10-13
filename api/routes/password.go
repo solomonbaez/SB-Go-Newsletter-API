@@ -63,7 +63,7 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.AddFlash(e.Error())
 		session.Save()
 
-		c.Header("X-Redirect", e.Error())
+		c.Header("X-Redirect", "Invalid password")
 
 		c.Redirect(http.StatusSeeOther, "password")
 		return
