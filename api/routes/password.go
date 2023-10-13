@@ -33,7 +33,7 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.AddFlash(e.Error())
 		session.Save()
 
-		c.Header("X-Redirect", e.Error())
+		c.Header("X-Redirect", "Forbidden")
 
 		c.Redirect(http.StatusSeeOther, "password")
 		return
@@ -50,7 +50,7 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		session.AddFlash(e.Error())
 		session.Save()
 
-		c.Header("X-Redirect", e.Error())
+		c.Header("X-Redirect", "Fields must match")
 
 		c.Redirect(http.StatusSeeOther, "password")
 		return

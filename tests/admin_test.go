@@ -252,7 +252,6 @@ func Test_PostChangePassword_Passes(t *testing.T) {
 				AddRow(mock_id, prv_password_hash),
 		)
 
-	// new_password_hash, _ := handlers.GeneratePHC(new_password)
 	app.database.ExpectExec(`UPDATE users SET`).
 		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
@@ -270,6 +269,49 @@ func Test_PostChangePassword_Passes(t *testing.T) {
 	}
 }
 
+func Test_PostChangePassword_UnconfirmedNewPassword_Fails(t *testing.T) {
+	// initialize
+	app := new_mock_app()
+	defer app.database.Close(app.context)
+
+	prv_password := "user"
+	new_password := "passwordthatislongerthan12characters"
+
+	// Create a URL-encoded form data string
+	data := url.Values{}
+	data.Set("current_password", prv_password)
+	data.Set("new_password", new_password)
+	data.Set("new_password_confirm", prv_password)
+	form_data := data.Encode()
+
+	// Create a POST request with the form data
+	request, e := http.NewRequest("POST", "/admin/password/authenticated", strings.NewReader(form_data))
+	if e != nil {
+		t.Fatal(e)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	mock_id := uuid.NewString()
+	prv_password_hash, _ := handlers.GeneratePHC(prv_password)
+	app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(
+			pgxmock.NewRows([]string{"id", "password_hash"}).
+				AddRow(mock_id, prv_password_hash),
+		)
+
+	app.new_mock_request(request)
+
+	// tests
+	if status := app.recorder.Code; status != http.StatusSeeOther {
+		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
+	}
+	header := app.recorder.Header()
+	redirect := header.Get("X-Redirect")
+	if redirect != "Fields must match" {
+		t.Errorf("Expected header %s, but got %s", "Fields must match", redirect)
+	}
+}
 func new_mock_database() (database pgxmock.PgxConnIface) {
 	database, _ = pgxmock.NewConn()
 
