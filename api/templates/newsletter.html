@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Newsletter</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {
+                margin: 0;
+                text-align: center;
+                font-family: "Merriweather", serif;
+                background-color: #111;
+                color: #fff;
+            }
+
+            section {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .form_container {
+                margin: 50px;
+                display: flex;
+                flex-direction: column;
+            }
+
+            label {
+                color: blanchedalmond;
+            }
+            p {
+                color: blanchedalmond;
+            }
+            text {
+                background-color: blanchedalmond;
+            }
+        </style>
+    </head>
+    <body>
+        {{if .flashes}}
+            <section>
+                <p>Error: {{.flashes}}</p>
+            </section>
+        {{end}}
+
+        <div class="form_container">
+            <form action="/newsletter" method="post">
+                <label>Title
+                    <input
+                        type="text"
+                        placeholder="Enter newsletter title"
+                        name="title"
+                    >
+                </label>
+
+                <label>Text
+                    <textarea
+                        type="password"
+                        placeholder="Enter newsletter body" 
+                        name="text"
+                    >
+                </label>
+
+                <label>Html
+                    <textarea
+                        type="text"
+                        placeholder="Enter newsletter body with html styling"
+                        name="html"
+                    >
+                </label>
+
+                <input hidden type="text" name="idempotency_key" value="{{.idempotency_key}}">
+                <button type="submit">Publish</button>
+            </form>
+        </div>
+    </body>
+</html>
