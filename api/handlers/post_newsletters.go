@@ -6,11 +6,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+
 	// "html"
 	"net/http"
 	"reflect"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -57,29 +57,12 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClien
 	var e error
 
 	requestID := c.GetString("requestID")
-	// userCredentials, e := BasicAuth(c)
-	// if e != nil {
-	// 	response = "Unauthorized user"
-	// 	HandleError(c, requestID, e, response, http.StatusBadRequest)
-	// 	return
-	// }
-
-	// _, e = rh.ValidateCredentials(c, userCredentials)
-	// if e != nil {
-	// 	response := "Failed to validate credentials"
-	// 	HandleError(c, requestID, e, response, http.StatusBadRequest)
-	// 	return
-	// }
+	key, _ := c.GetPostForm("idempotency_key")
+	newsletter.Key = key
 
 	body.Title, _ = c.GetPostForm("title")
 	body.Text, _ = c.GetPostForm("text")
 	body.Html, _ = c.GetPostForm("html")
-
-	// if e = c.ShouldBindJSON(&body); e != nil {
-	// 	response = "Could not send newsletter"
-	// 	HandleError(c, requestID, e, response, http.StatusInternalServerError)
-	// 	return
-	// }
 
 	if e = ParseNewsletter(&body); e != nil {
 		response = "Failed to parse newsletter"
@@ -145,53 +128,6 @@ func (rh *RouteHandler) ValidateCredentials(c *gin.Context, credentials *Credent
 		Msg("Successfully validated user credentials")
 
 	return &id, nil
-}
-
-func BasicAuth(c *gin.Context) (*Credentials, error) {
-	var e error
-	h := c.GetHeader("Authorization")
-
-	var encodedSegment string
-	if strings.HasPrefix(h, "Basic ") {
-		encodedSegment = strings.TrimPrefix(h, "Basic ")
-		encodedSegment = strings.TrimRight(encodedSegment, "=")
-		decodedSegment, e := base64.RawURLEncoding.DecodeString(encodedSegment)
-		if e != nil {
-			return nil, e
-		}
-
-		valid := utf8.Valid(decodedSegment)
-		if !valid {
-			e = errors.New("invalid header encoding")
-			return nil, e
-		}
-
-		// valid header should only contain two segments
-		utf8Segment := strings.Trim(string(decodedSegment), " ")
-		s := strings.Split(utf8Segment, ":")
-		if len(s) < 2 {
-			e = errors.New("fields cannot be empty")
-			return nil, e
-		}
-		username, e := ParseField(s[0])
-		if e != nil {
-			return nil, e
-		}
-		password, e := ParseField(s[1])
-		if e != nil {
-			return nil, e
-		}
-
-		credentials := &Credentials{
-			username,
-			password,
-		}
-
-		return credentials, nil
-	} else {
-		e = errors.New("authorization method must be basic")
-		return nil, e
-	}
 }
 
 func ParseNewsletter(c interface{}) error {

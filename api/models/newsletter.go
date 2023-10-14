@@ -3,6 +3,7 @@ package models
 type Newsletter struct {
 	Recipient SubscriberEmail
 	Content   *Body
+	Key       string
 }
 
 type Body struct {
