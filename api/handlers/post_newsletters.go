@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	// "html"
 	"net/http"
 	"reflect"
 	"strings"
@@ -70,11 +71,15 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClien
 		return
 	}
 
-	if e = c.ShouldBindJSON(&body); e != nil {
-		response = "Could not send newsletter"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
-		return
-	}
+	body.Title, _ = c.GetPostForm("title")
+	body.Text, _ = c.GetPostForm("text")
+	body.Html, _ = c.GetPostForm("html")
+
+	// if e = c.ShouldBindJSON(&body); e != nil {
+	// 	response = "Could not send newsletter"
+	// 	HandleError(c, requestID, e, response, http.StatusInternalServerError)
+	// 	return
+	// }
 
 	if e = ParseNewsletter(&body); e != nil {
 		response = "Failed to parse newsletter"

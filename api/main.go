@@ -223,6 +223,8 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 
 	admin.GET("/subscribers", rh.GetSubscribers)
 	admin.GET("/subscribers/:id", rh.GetSubscriberByID)
+
+	admin.GET("/newsletter", routes.GetNewsletter)
 	admin.POST("/newsletter", func(c *gin.Context) { rh.PostNewsletter(c, client) })
 
 	router.GET("/health", handlers.HealthCheck)
