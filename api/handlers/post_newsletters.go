@@ -57,19 +57,19 @@ func (rh *RouteHandler) PostNewsletter(c *gin.Context, client clients.EmailClien
 	var e error
 
 	requestID := c.GetString("requestID")
-	userCredentials, e := BasicAuth(c)
-	if e != nil {
-		response = "Unauthorized user"
-		HandleError(c, requestID, e, response, http.StatusBadRequest)
-		return
-	}
+	// userCredentials, e := BasicAuth(c)
+	// if e != nil {
+	// 	response = "Unauthorized user"
+	// 	HandleError(c, requestID, e, response, http.StatusBadRequest)
+	// 	return
+	// }
 
-	_, e = rh.ValidateCredentials(c, userCredentials)
-	if e != nil {
-		response := "Failed to validate credentials"
-		HandleError(c, requestID, e, response, http.StatusBadRequest)
-		return
-	}
+	// _, e = rh.ValidateCredentials(c, userCredentials)
+	// if e != nil {
+	// 	response := "Failed to validate credentials"
+	// 	HandleError(c, requestID, e, response, http.StatusBadRequest)
+	// 	return
+	// }
 
 	body.Title, _ = c.GetPostForm("title")
 	body.Text, _ = c.GetPostForm("text")
