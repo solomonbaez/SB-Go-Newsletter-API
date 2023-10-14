@@ -15,3 +15,7 @@ func GenerateIdempotencyKey() (*IdempotencyKey, error) {
 	idempotencyKey := IdempotencyKey(key)
 	return &idempotencyKey, nil
 }
+
+func (key IdempotencyKey) String() string {
+	return string(key)
+}
