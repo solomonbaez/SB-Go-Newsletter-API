@@ -7,6 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-gomail/gomail v0.0.0-20160411212932-81ebce5c23df
 	github.com/google/uuid v1.3.1
+	github.com/jackc/pgtype v1.14.0
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/mocktools/go-smtp-mock v1.10.0
 	github.com/pashagolub/pgxmock/v3 v3.0.0
@@ -37,6 +38,7 @@ require (
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/gorilla/sessions v1.2.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect

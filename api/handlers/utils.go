@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rand"
 	"math/big"
 	"net/http"
@@ -10,42 +9,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
-// TODO switch to cfg baseURL
-const baseURL = "http://localhost:8000"
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-type Database interface {
-	Exec(c context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
-	Query(c context.Context, sql string, args ...interface{}) (pgx.Rows, error)
-	QueryRow(c context.Context, sql string, args ...interface{}) pgx.Row
-	Begin(c context.Context) (pgx.Tx, error)
-}
-
-type RouteHandler struct {
-	DB Database
-}
-
-func NewRouteHandler(db Database) *RouteHandler {
-	return &RouteHandler{
-		DB: db,
-	}
-}
-
-type Loader struct {
-	Email string `json:"email"`
-	Name  string `json:"name"`
-}
 
 func HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, "OK")
 }
 
-func storeToken(c *gin.Context, tx pgx.Tx, id string, token string) error {
+func StoreToken(c *gin.Context, tx pgx.Tx, id string, token string) error {
 	query := "INSERT INTO subscription_tokens (subscription_token, subscriber_id) VALUES ($1, $2)"
 	_, e := tx.Exec(c, query, token, id)
 	if e != nil {

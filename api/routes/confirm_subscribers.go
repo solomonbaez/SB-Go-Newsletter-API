@@ -1,13 +1,14 @@
-package handlers
+package routes
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
-func (rh *RouteHandler) ConfirmSubscriber(c *gin.Context) {
+func ConfirmSubscriber(c *gin.Context, dh *handlers.DatabaseHandler) {
 	var id string
 	var query string
 	var response string
@@ -17,18 +18,18 @@ func (rh *RouteHandler) ConfirmSubscriber(c *gin.Context) {
 	token := c.Param("token")
 
 	query = "SELECT subscriber_id FROM subscription_tokens WHERE subscription_token = $1"
-	e = rh.DB.QueryRow(c, query, token).Scan(&id)
+	e = dh.DB.QueryRow(c, query, token).Scan(&id)
 	if e != nil {
 		response = "Failed to fetch subscriber ID"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
 
 	query = "UPDATE subscriptions SET status = 'confirmed' WHERE id = $1"
-	_, e = rh.DB.Exec(c, query, id)
+	_, e = dh.DB.Exec(c, query, id)
 	if e != nil {
 		response = "Failed to confirm subscription"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
 

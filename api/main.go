@@ -29,6 +29,7 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
+	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
 )
 
 type App struct {
@@ -115,8 +116,9 @@ func main() {
 		Msg("Connected to postgres")
 
 	// initialize server components
-	rh := handlers.NewRouteHandler(pool)
-	router, listener, e := initializeServer(rh)
+	dh := handlers.NewDatabaseHandler(pool)
+
+	router, listener, e := initializeServer(dh)
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -160,7 +162,7 @@ func initializeDatabase(c context.Context) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, error) {
+func initializeServer(dh *handlers.DatabaseHandler) (*gin.Engine, net.Listener, error) {
 	var e error
 	// router
 	router := gin.Default()
@@ -202,7 +204,7 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	if enableAuth {
 		var users gin.Accounts
 		router.Use(func(c *gin.Context) {
-			users, e = rh.GetUsers(c)
+			users, e = adminRoutes.GetUsers(c, dh)
 			if e != nil {
 				log.Fatal().
 					Err(e).
@@ -216,27 +218,21 @@ func initializeServer(rh *handlers.RouteHandler) (*gin.Engine, net.Listener, err
 	// define admin group
 	admin := router.Group("/admin")
 	admin.Use(AdminMiddleware())
-	admin.GET("/dashboard", routes.GetAdminDashboard)
-	admin.GET("/password", routes.GetChangePassword)
-	admin.POST("/password", func(c *gin.Context) { routes.PostChangePassword(c, rh) })
-	admin.GET("/logout", routes.Logout)
-
-	admin.GET("/subscribers", rh.GetSubscribers)
-	admin.GET("/subscribers/:id", rh.GetSubscriberByID)
-
-	admin.GET("/newsletter", routes.GetNewsletter)
-	admin.POST("/newsletter", func(c *gin.Context) { rh.PostNewsletter(c, client) })
+	admin.GET("/dashboard", adminRoutes.GetAdminDashboard)
+	admin.GET("/password", adminRoutes.GetChangePassword)
+	admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, dh) })
+	admin.GET("/logout", adminRoutes.Logout)
+	admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, dh) })
+	admin.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, dh) })
+	admin.GET("/newsletter", adminRoutes.GetNewsletter)
+	admin.POST("/newsletter", func(c *gin.Context) { adminRoutes.PostNewsletter(c, dh, client) })
 
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/home", routes.Home)
-
 	router.GET("/login", routes.GetLogin)
-	router.POST("/login", func(c *gin.Context) {
-		routes.PostLogin(c, rh)
-	})
-
-	router.POST("/subscribe", func(c *gin.Context) { rh.Subscribe(c, client) })
-	router.GET("/confirm/:token", rh.ConfirmSubscriber)
+	router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, dh) })
+	router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, dh, client) })
+	router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, dh) })
 
 	// listener
 	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", app.port))

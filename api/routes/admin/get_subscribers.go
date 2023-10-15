@@ -1,4 +1,4 @@
-package handlers
+package routes
 
 import (
 	"net/http"
@@ -7,10 +7,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
-func (rh *RouteHandler) GetSubscribers(c *gin.Context) {
+func GetSubscribers(c *gin.Context, dh *handlers.DatabaseHandler) {
 	var subscribers []*models.Subscriber
 	requestID := c.GetString("requestID")
 
@@ -21,18 +22,18 @@ func (rh *RouteHandler) GetSubscribers(c *gin.Context) {
 		Str("requestID", requestID).
 		Msg("Fetching subscribers...")
 
-	rows, e := rh.DB.Query(c, "SELECT * FROM subscriptions")
+	rows, e := dh.DB.Query(c, "SELECT * FROM subscriptions")
 	if e != nil {
 		response = "Failed to fetch subscribers"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	subscribers, e = pgx.CollectRows[*models.Subscriber](rows, BuildSubscriber)
+	subscribers, e = pgx.CollectRows[*models.Subscriber](rows, handlers.BuildSubscriber)
 	if e != nil {
 		response = "Failed to parse subscribers"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
 
@@ -42,7 +43,7 @@ func (rh *RouteHandler) GetSubscribers(c *gin.Context) {
 			s.Email, e = models.ParseEmail(s.Email.String())
 			if e != nil {
 				response = "Failed to parse subscriber"
-				HandleError(c, requestID, e, response, http.StatusInternalServerError)
+				handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 				continue
 			}
 		}
@@ -58,7 +59,7 @@ func (rh *RouteHandler) GetSubscribers(c *gin.Context) {
 	}
 }
 
-func (rh *RouteHandler) GetSubscriberByID(c *gin.Context) {
+func GetSubscriberByID(c *gin.Context, dh *handlers.DatabaseHandler) {
 	requestID := c.GetString("requestID")
 
 	var response string
@@ -73,7 +74,7 @@ func (rh *RouteHandler) GetSubscriberByID(c *gin.Context) {
 	id, e := uuid.Parse(u)
 	if e != nil {
 		response = "Invalid ID format"
-		HandleError(c, requestID, e, response, http.StatusBadRequest)
+		handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
 
@@ -82,28 +83,28 @@ func (rh *RouteHandler) GetSubscriberByID(c *gin.Context) {
 		Msg("Fetching subscriber...")
 
 	var subscriber models.Subscriber
-	e = rh.DB.QueryRow(c, "SELECT id, email, name, status FROM subscriptions WHERE id=$1", id).Scan(&subscriber.ID, &subscriber.Email, &subscriber.Name, &subscriber.Status)
+	e = dh.DB.QueryRow(c, "SELECT id, email, name, status FROM subscriptions WHERE id=$1", id).Scan(&subscriber.ID, &subscriber.Email, &subscriber.Name, &subscriber.Status)
 	if e != nil {
 		if e == pgx.ErrNoRows {
 			response = "Subscriber not found"
 		} else {
 			response = "Database query error"
 		}
-		HandleError(c, requestID, e, response, http.StatusNotFound)
+		handlers.HandleError(c, requestID, e, response, http.StatusNotFound)
 		return
 	}
 
 	subscriber.Email, e = models.ParseEmail(subscriber.Email.String())
 	if e != nil {
 		response = "Invalid email"
-		HandleError(c, requestID, e, response, http.StatusConflict)
+		handlers.HandleError(c, requestID, e, response, http.StatusConflict)
 		return
 	}
 
 	c.JSON(http.StatusFound, gin.H{"requestID": requestID, "subscriber": subscriber})
 }
 
-func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) []*models.Subscriber {
+func GetConfirmedSubscribers(c *gin.Context, dh *handlers.DatabaseHandler) []*models.Subscriber {
 	var subscribers []*models.Subscriber
 	requestID := c.GetString("requestID")
 
@@ -114,18 +115,18 @@ func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) []*models.Subscri
 		Str("requestID", requestID).
 		Msg("Fetching confirmed subscribers...")
 
-	rows, e := rh.DB.Query(c, "SELECT id, email, name, created, status FROM subscriptions WHERE status=$1", "confirmed")
+	rows, e := dh.DB.Query(c, "SELECT id, email, name, created, status FROM subscriptions WHERE status=$1", "confirmed")
 	if e != nil {
 		response = "Failed to fetch confirmed subscribers"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return nil
 	}
 	defer rows.Close()
 
-	subscribers, e = pgx.CollectRows[*models.Subscriber](rows, BuildSubscriber)
+	subscribers, e = pgx.CollectRows[*models.Subscriber](rows, handlers.BuildSubscriber)
 	if e != nil {
 		response = "Failed to parse confirmed subscribers"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return nil
 	}
 
@@ -134,7 +135,7 @@ func (rh RouteHandler) GetConfirmedSubscribers(c *gin.Context) []*models.Subscri
 			s.Email, e = models.ParseEmail(s.Email.String())
 			if e != nil {
 				response = "Invalid email"
-				HandleError(c, requestID, e, response, http.StatusConflict)
+				handlers.HandleError(c, requestID, e, response, http.StatusConflict)
 				return nil
 			}
 		}

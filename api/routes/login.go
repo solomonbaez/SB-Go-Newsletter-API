@@ -6,7 +6,9 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/authentication"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
 func GetLogin(c *gin.Context) {
@@ -20,15 +22,15 @@ func GetLogin(c *gin.Context) {
 }
 
 // TODO investigate HMAC error authentication -> seemingly not necessary due to gin HTML-escaping
-func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
+func PostLogin(c *gin.Context, dh *handlers.DatabaseHandler) {
 	session := sessions.Default(c)
 
-	credentials := &handlers.Credentials{
+	credentials := &models.Credentials{
 		Username: c.PostForm("username"),
 		Password: c.PostForm("password"),
 	}
 
-	id, e := rh.ValidateCredentials(c, credentials)
+	id, e := authentication.ValidateCredentials(c, dh, credentials)
 	if e != nil {
 		log.Error().
 			Err(e).
@@ -47,7 +49,7 @@ func PostLogin(c *gin.Context, rh *handlers.RouteHandler) {
 		Str("id", *id).
 		Msg("login")
 
-	session.Set("user", credentials.Username)
+	session.Set("user", id)
 	session.Save()
 
 	c.Header("X-Redirect", "Login")

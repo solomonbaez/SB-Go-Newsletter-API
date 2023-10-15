@@ -1,4 +1,4 @@
-package handlers
+package routes
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
@@ -17,9 +18,9 @@ const tokenLength = 25
 
 var confirmationLink string
 var confirmation = &models.Newsletter{}
-var loader *Loader
+var loader *handlers.Loader
 
-func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
+func Subscribe(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) {
 	var subscriber models.Subscriber
 
 	requestID := c.GetString("requestID")
@@ -27,17 +28,17 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	var response string
 	var e error
 
-	tx, e := rh.DB.Begin(c)
+	tx, e := dh.DB.Begin(c)
 	if e != nil {
 		response = "Failed to begin transaction"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback(c)
 
 	if e = c.ShouldBindJSON(&loader); e != nil {
 		response = "Could not subscribe"
-		HandleError(c, requestID, e, response, http.StatusBadRequest)
+		handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
 
@@ -48,13 +49,13 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 	subscriberEmail, e := models.ParseEmail(loader.Email)
 	if e != nil {
 		response = "Could not subscribe"
-		HandleError(c, requestID, e, response, http.StatusBadRequest)
+		handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
 	subscriberName, e := models.ParseName(loader.Name)
 	if e != nil {
 		response := "Could not subscribe"
-		HandleError(c, requestID, e, response, http.StatusBadRequest)
+		handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
 
@@ -73,7 +74,7 @@ func (rh *RouteHandler) Subscribe(c *gin.Context, client *clients.SMTPClient) {
 
 	if e := insertSubscriber(c, client, tx, subscriber); e != nil {
 		response = "Failed to insert subscriber"
-		HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 	}
 
 	log.Info().
@@ -96,7 +97,7 @@ func insertSubscriber(c *gin.Context, client *clients.SMTPClient, tx pgx.Tx, sub
 		return e
 	}
 
-	token, e := GenerateCSPRNG(tokenLength)
+	token, e := handlers.GenerateCSPRNG(tokenLength)
 	if e != nil {
 		return e
 	}
@@ -104,7 +105,7 @@ func insertSubscriber(c *gin.Context, client *clients.SMTPClient, tx pgx.Tx, sub
 	if client.SmtpServer != "test" {
 		confirmation.Recipient = subscriber.Email
 
-		confirmationLink = fmt.Sprintf("%v/%v", baseURL, token)
+		confirmationLink = fmt.Sprintf("%v/%v", handlers.BaseURL, token)
 		confirmation.Content = &models.Body{
 			Title: "Please confirm your subscription",
 			Text:  fmt.Sprintf("Welcome to our newsletter! Please confirm your subscription at: %v", confirmationLink),
@@ -116,7 +117,7 @@ func insertSubscriber(c *gin.Context, client *clients.SMTPClient, tx pgx.Tx, sub
 		}
 	}
 
-	if e := storeToken(c, tx, newID, token); e != nil {
+	if e := handlers.StoreToken(c, tx, newID, token); e != nil {
 		return e
 	}
 

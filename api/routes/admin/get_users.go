@@ -1,19 +1,20 @@
-package handlers
+package routes
 
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
-func (rh *RouteHandler) GetUsers(c *gin.Context) (gin.Accounts, error) {
+func GetUsers(c *gin.Context, dh *handlers.DatabaseHandler) (gin.Accounts, error) {
 	var users gin.Accounts
 	var username string
 	var password string
 
 	requestID := c.GetString("requestID")
 
-	rows, e := rh.DB.Query(c, "SELECT username, password FROM users")
+	rows, e := dh.DB.Query(c, "SELECT username, password FROM users")
 	if e != nil {
 		log.Error().
 			Str("requestID", requestID).

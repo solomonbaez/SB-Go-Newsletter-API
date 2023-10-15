@@ -8,7 +8,9 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/authentication"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
 func GetChangePassword(c *gin.Context) {
@@ -18,17 +20,17 @@ func GetChangePassword(c *gin.Context) {
 	c.HTML(http.StatusOK, "password.html", gin.H{"flashes": flashes})
 }
 
-func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
+func PostChangePassword(c *gin.Context, dh *handlers.DatabaseHandler) {
 	session := sessions.Default(c)
 
 	u := session.Get("user")
 	user := fmt.Sprintf("%v", u)
 
-	credentials := &handlers.Credentials{
+	credentials := &models.Credentials{
 		Username: user,
 		Password: c.PostForm("current_password"),
 	}
-	id, e := rh.ValidateCredentials(c, credentials)
+	id, e := authentication.ValidateCredentials(c, dh, credentials)
 	if e != nil {
 		session.AddFlash(e.Error())
 		session.Save()
@@ -69,7 +71,7 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		return
 	}
 
-	newPHC, e := handlers.GeneratePHC(newPassword)
+	newPHC, e := models.GeneratePHC(newPassword)
 	if e != nil {
 		log.Error().
 			Err(e).
@@ -84,7 +86,7 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 		return
 	}
 
-	if e = ChangePassword(c, rh, id, newPHC); e != nil {
+	if e = ChangePassword(c, dh, id, newPHC); e != nil {
 		log.Error().
 			Err(e).
 			Msg("Failed to change password")
@@ -109,9 +111,9 @@ func PostChangePassword(c *gin.Context, rh *handlers.RouteHandler) {
 	c.Redirect(http.StatusSeeOther, "dashboard")
 }
 
-func ChangePassword(c *gin.Context, rh *handlers.RouteHandler, id *string, newPHC string) (e error) {
+func ChangePassword(c *gin.Context, dh *handlers.DatabaseHandler, id *string, newPHC string) (e error) {
 	query := "UPDATE users SET password_hash = $1 WHERE id = $2"
-	_, e = rh.DB.Exec(c, query, newPHC, id)
+	_, e = dh.DB.Exec(c, query, newPHC, id)
 	if e != nil {
 		return e
 	}
@@ -124,7 +126,7 @@ func ParsePassword(password string) error {
 	var e error
 
 	// sanitize password
-	if _, e := handlers.ParseField(password); e != nil {
+	if _, e := authentication.ParseField(password); e != nil {
 		return e
 	}
 
