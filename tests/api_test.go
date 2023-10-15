@@ -2,34 +2,22 @@ package api_test
 
 import (
 	"net/http"
-	"net/http/httptest"
 
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v3"
 
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
-	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
 )
 
-type app struct {
-	recorder *httptest.ResponseRecorder
-	context  *gin.Context
-	router   *gin.Engine
-}
-
 func Test_HealthCheck_Returns_OK(t *testing.T) {
-	// router
-	router := gin.Default()
-	router.GET("/health", handlers.HealthCheck)
+	// initialize
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
 	// server initialization
 	request, e := http.NewRequest("GET", "/health", nil)
@@ -38,7 +26,7 @@ func Test_HealthCheck_Returns_OK(t *testing.T) {
 	}
 
 	// tests
-	app := spawn_app(router, request)
+	app.new_mock_request(request)
 	if status := app.recorder.Code; status != http.StatusOK {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
 	}
@@ -52,29 +40,20 @@ func Test_HealthCheck_Returns_OK(t *testing.T) {
 
 func Test_GetSubscribers_NoSubscribers_Passes(t *testing.T) {
 	// initialize
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
-	router := spawn_mock_router(database, client)
-
-	request, e := http.NewRequest("GET", "/subscribers", nil)
+	request, e := http.NewRequest("GET", "/admin/subscribers", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 
-	database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
+	app.database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
 		pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}),
 	)
 
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
@@ -90,31 +69,22 @@ func Test_GetSubscribers_NoSubscribers_Passes(t *testing.T) {
 
 func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 	// initialization
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
-	router := spawn_mock_router(database, client)
-
-	request, e := http.NewRequest("GET", "/subscribers", nil)
+	request, e := http.NewRequest("GET", "/admin/subscribers", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 
 	mock_id := uuid.NewString()
-	database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
+	app.database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
 		pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
 			AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("TestUser"), time.Now(), "pending"),
 	)
 
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
@@ -130,31 +100,22 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 
 func Test_GetConfirmedSubscribers_NoSubscribers_Passes(t *testing.T) {
 	// initialize
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
-	router := spawn_mock_router(database, client)
-
-	request, e := http.NewRequest("GET", "/confirmed", nil)
+	request, e := http.NewRequest("GET", "/admin/confirmed", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 
-	database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
+	app.database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}),
 		)
 
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
@@ -170,33 +131,24 @@ func Test_GetConfirmedSubscribers_NoSubscribers_Passes(t *testing.T) {
 
 func Test_GetConfirmedSubscribers_WithSubscribers_Passes(t *testing.T) {
 	// initialize
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
-	router := spawn_mock_router(database, client)
-
-	request, e := http.NewRequest("GET", "/confirmed", nil)
+	request, e := http.NewRequest("GET", "/admin/confirmed", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 
 	mock_id := uuid.NewString()
-	database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
+	app.database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
 				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("TestUser"), time.Now(), "confirmed"),
 		)
 
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
@@ -212,25 +164,16 @@ func Test_GetConfirmedSubscribers_WithSubscribers_Passes(t *testing.T) {
 
 func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 	// initialization
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	router := spawn_mock_router(database, client)
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
 	mock_id := uuid.NewString()
-
-	request, e := http.NewRequest("GET", fmt.Sprintf("/subscribers/%v", mock_id), nil)
+	request, e := http.NewRequest("GET", fmt.Sprintf("/admin/subscribers/%v", mock_id), nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 
-	database.ExpectQuery(`SELECT id, email, name, status FROM subscriptions WHERE`).
+	app.database.ExpectQuery(`SELECT id, email, name, status FROM subscriptions WHERE`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name", "status"}).
@@ -238,9 +181,8 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 		)
 
 	// tests
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	if status := app.recorder.Code; status != http.StatusFound {
 		t.Errorf("Expected status code %v, but got %v", http.StatusFound, status)
@@ -256,26 +198,17 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 
 func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 	// initialization
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	router := spawn_mock_router(database, client)
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
 	// Non-UUID ID
 	mock_id := "1"
-
-	request, e := http.NewRequest("GET", fmt.Sprintf("/subscribers/%v", mock_id), nil)
+	request, e := http.NewRequest("GET", fmt.Sprintf("/admin/subscribers/%v", mock_id), nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 
-	database.ExpectQuery(`SELECT id, email, name FROM subscriptions WHERE`).
+	app.database.ExpectQuery(`SELECT id, email, name FROM subscriptions WHERE`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name"}).
@@ -283,9 +216,8 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 		)
 
 	// tests
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	if status := app.recorder.Code; status != http.StatusBadRequest {
 		t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
@@ -301,16 +233,8 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 
 func Test_Subscribe_Passes(t *testing.T) {
 	// initialization
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	router := spawn_mock_router(database, client)
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
 	data := `{"email": "test@test.com", "name": "TestUser"}`
 	request, e := http.NewRequest("POST", "/subscribe", strings.NewReader(data))
@@ -318,18 +242,17 @@ func Test_Subscribe_Passes(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	database.ExpectBegin()
-	database.ExpectExec("INSERT INTO subscriptions").
+	app.database.ExpectBegin()
+	app.database.ExpectExec("INSERT INTO subscriptions").
 		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
-	database.ExpectExec("INSERT INTO subscription_tokens").
+	app.database.ExpectExec("INSERT INTO subscription_tokens").
 		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
-	database.ExpectCommit()
+	app.database.ExpectCommit()
 
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusCreated {
@@ -345,11 +268,8 @@ func Test_Subscribe_Passes(t *testing.T) {
 
 func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 	// // initialization
-	var database pgxmock.PgxConnIface
-	var client *clients.SMTPClient
-	var router *gin.Engine
+	var app App
 	var request *http.Request
-	var app app
 	var e error
 
 	var test_cases []string
@@ -363,45 +283,34 @@ func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 	)
 	for _, tc := range test_cases {
 		// resource intensive but necessary duplication
-		database, e = spawn_mock_database()
-		if e != nil {
-			t.Fatal(e)
-		}
-		client, e = spawn_mock_smtp_client()
-		if e != nil {
-			t.Fatal(e)
-		}
-
-		router = spawn_mock_router(database, client)
+		app = new_mock_app()
 
 		request, e = http.NewRequest("POST", "/subscribe", strings.NewReader(tc))
 		if e != nil {
 			t.Fatal(e)
 		}
 
-		database.ExpectBegin()
-		database.ExpectExec("INSERT INTO subscriptions").
+		app.database.ExpectBegin()
+		app.database.ExpectExec("INSERT INTO subscriptions").
 			WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg())
-		database.ExpectRollback()
+		app.database.ExpectRollback()
 
-		app = spawn_app(router, request)
-		defer database.ExpectationsWereMet()
-		defer database.Close(app.context)
+		app.new_mock_request(request)
 
 		// tests
 		if status := app.recorder.Code; status != http.StatusBadRequest {
 			t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
 		}
+
+		app.database.ExpectationsWereMet()
+		app.database.Close(app.context)
 	}
 }
 
 func TestSubscribeInvalidNameFails(t *testing.T) {
 	// // initialization
-	var database pgxmock.PgxConnIface
-	var client *clients.SMTPClient
-	var router *gin.Engine
 	var request *http.Request
-	var app app
+	var app App
 	var e error
 
 	var test_cases []string
@@ -419,45 +328,34 @@ func TestSubscribeInvalidNameFails(t *testing.T) {
 	)
 	for _, tc := range test_cases {
 		// resource intensive but necessary duplication
-		database, e = spawn_mock_database()
-		if e != nil {
-			t.Fatal(e)
-		}
-		client, e = spawn_mock_smtp_client()
-		if e != nil {
-			t.Fatal(e)
-		}
-
-		router = spawn_mock_router(database, client)
+		app = new_mock_app()
 
 		request, e = http.NewRequest("POST", "/subscribe", strings.NewReader(tc))
 		if e != nil {
 			t.Fatal(e)
 		}
 
-		database.ExpectBegin()
-		database.ExpectExec("INSERT INTO subscriptions").
+		app.database.ExpectBegin()
+		app.database.ExpectExec("INSERT INTO subscriptions").
 			WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg())
-		database.ExpectRollback()
+		app.database.ExpectRollback()
 
-		app = spawn_app(router, request)
-		defer database.ExpectationsWereMet()
-		defer database.Close(app.context)
+		app.new_mock_request(request)
 
 		// tests
 		if status := app.recorder.Code; status != http.StatusBadRequest {
 			t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
 		}
+
+		app.database.ExpectationsWereMet()
+		app.database.Close(app.context)
 	}
 }
 
 func Test_Subscribe_MaxLengthParameters_Fails(t *testing.T) {
 	// // initialization
-	var database pgxmock.PgxConnIface
-	var client *clients.SMTPClient
-	var router *gin.Engine
 	var request *http.Request
-	var app app
+	var app App
 	var e error
 
 	long_email := "a" + strings.Repeat("a", 100) + "@test.com"
@@ -471,50 +369,34 @@ func Test_Subscribe_MaxLengthParameters_Fails(t *testing.T) {
 	)
 	for _, tc := range test_cases {
 		// resource intensive but necessary duplication
-		database, e = spawn_mock_database()
-		if e != nil {
-			t.Fatal(e)
-		}
-		client, e = spawn_mock_smtp_client()
-		if e != nil {
-			t.Fatal(e)
-		}
-
-		router = spawn_mock_router(database, client)
+		app = new_mock_app()
 
 		request, e = http.NewRequest("POST", "/subscribe", strings.NewReader(tc))
 		if e != nil {
 			t.Fatal(e)
 		}
 
-		database.ExpectBegin()
-		database.ExpectExec("INSERT INTO subscriptions").
+		app.database.ExpectBegin()
+		app.database.ExpectExec("INSERT INTO subscriptions").
 			WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg())
-		database.ExpectRollback()
+		app.database.ExpectRollback()
 
-		app = spawn_app(router, request)
-		defer database.ExpectationsWereMet()
-		defer database.Close(app.context)
+		app.new_mock_request(request)
 
 		// tests
 		if status := app.recorder.Code; status != http.StatusBadRequest {
 			t.Errorf("Expected status code %v, but got %v", http.StatusBadRequest, status)
 		}
+
+		app.database.ExpectationsWereMet()
+		app.database.Close(app.context)
 	}
 }
 
 func Test_ConfirmSubscriber_Passes(t *testing.T) {
 	// initialize
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	router := spawn_mock_router(database, client)
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
 	mock_token := uuid.NewString()
 	request, e := http.NewRequest("GET", fmt.Sprintf("/confirm/%s", mock_token), nil)
@@ -523,20 +405,19 @@ func Test_ConfirmSubscriber_Passes(t *testing.T) {
 	}
 
 	mock_id := uuid.NewString()
-	database.ExpectQuery(`SELECT subscriber_id FROM subscription_tokens WHERE`).
+	app.database.ExpectQuery(`SELECT subscriber_id FROM subscription_tokens WHERE`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"subscriber_id"}).
 				AddRow(mock_id),
 		)
 
-	database.ExpectExec(`UPDATE subscriptions SET status = 'confirmed' WHERE`).
+	app.database.ExpectExec(`UPDATE subscriptions SET status = 'confirmed' WHERE`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusAccepted {
@@ -552,16 +433,8 @@ func Test_ConfirmSubscriber_Passes(t *testing.T) {
 
 func Test_ConfirmSubscriber_InvalidID_Fails(t *testing.T) {
 	// initialize
-	database, e := spawn_mock_database()
-	if e != nil {
-		t.Fatal(e)
-	}
-	client, e := spawn_mock_smtp_client()
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	router := spawn_mock_router(database, client)
+	app := new_mock_app()
+	defer app.database.Close(app.context)
 
 	mock_token := uuid.NewString()
 	request, e := http.NewRequest("GET", fmt.Sprintf("/confirm/%s", mock_token), nil)
@@ -571,20 +444,19 @@ func Test_ConfirmSubscriber_InvalidID_Fails(t *testing.T) {
 
 	invalid_token := uuid.NewString()
 	mock_id := uuid.NewString()
-	database.ExpectQuery(`SELECT subscriber_id FROM subscription_tokens WHERE`).
+	app.database.ExpectQuery(`SELECT subscriber_id FROM subscription_tokens WHERE`).
 		WithArgs(pgxmock.AnyArg().Match(invalid_token)).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"subscriber_id"}).
 				AddRow(mock_id),
 		)
 
-	database.ExpectExec(`UPDATE subscriptions SET status = 'confirmed' WHERE`).
+	app.database.ExpectExec(`UPDATE subscriptions SET status = 'confirmed' WHERE`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	app := spawn_app(router, request)
-	defer database.ExpectationsWereMet()
-	defer database.Close(app.context)
+	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusInternalServerError {
@@ -595,51 +467,5 @@ func Test_ConfirmSubscriber_InvalidID_Fails(t *testing.T) {
 	response_body := app.recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
-	}
-}
-
-func spawn_mock_database() (pgxmock.PgxConnIface, error) {
-	mock_db, e := pgxmock.NewConn()
-	if e != nil {
-		return nil, e
-	}
-
-	return mock_db, nil
-}
-
-func spawn_mock_smtp_client() (*clients.SMTPClient, error) {
-	cfg := "test"
-	client, e := clients.NewSMTPClient(&cfg)
-	if e != nil {
-		return nil, e
-	}
-
-	return client, nil
-}
-
-func spawn_mock_router(db pgxmock.PgxConnIface, client *clients.SMTPClient) *gin.Engine {
-	dh := handlers.NewDatabaseHandler(db)
-
-	router := gin.Default()
-	router.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, dh) })
-	router.GET("/confirmed", func(c *gin.Context) {
-		_ = adminRoutes.GetConfirmedSubscribers(c, dh)
-	})
-	router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, dh) })
-	router.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, dh) })
-	router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, dh, client) })
-
-	return router
-}
-
-func spawn_app(router *gin.Engine, request *http.Request) app {
-	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, request)
-	context, _ := gin.CreateTestContext(recorder)
-
-	return app{
-		recorder,
-		context,
-		router,
 	}
 }

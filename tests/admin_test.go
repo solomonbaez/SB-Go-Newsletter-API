@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v3"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
@@ -26,6 +27,7 @@ type App struct {
 	context  *gin.Context
 	router   *gin.Engine
 	database pgxmock.PgxConnIface
+	client   *clients.SMTPClient
 }
 
 func Test_GetLogin(t *testing.T) {
@@ -142,7 +144,7 @@ func Test_GetAdminDashboard_Passes(t *testing.T) {
 
 	// this is not a precise mock of the behvior due to param injection
 	// but the end-to-end behavior is exact
-	request, e := http.NewRequest("GET", "/admin/dashboard/authenticated", nil)
+	request, e := http.NewRequest("GET", "/admin/dashboard", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -152,30 +154,6 @@ func Test_GetAdminDashboard_Passes(t *testing.T) {
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
-	}
-}
-
-func Test_GetAdminDashboard_NoAuth_Fails(t *testing.T) {
-	// initialize
-	app := new_mock_app()
-	defer app.database.Close(app.context)
-
-	request, e := http.NewRequest("GET", "/admin/dashboard/notauthenticated", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	app.new_mock_request(request)
-
-	// tests
-	if status := app.recorder.Code; status != http.StatusSeeOther {
-		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
-	}
-
-	header := app.recorder.Header()
-	redirect := header.Get("X-Redirect")
-	if redirect != "Forbidden" {
-		t.Errorf("Expected header %s, but got %s", "Forbidden", redirect)
 	}
 }
 
@@ -184,7 +162,7 @@ func Test_GetChangePassword_Passes(t *testing.T) {
 	app := new_mock_app()
 	defer app.database.Close(app.context)
 
-	request, e := http.NewRequest("GET", "/admin/password/authenticated", nil)
+	request, e := http.NewRequest("GET", "/admin/password", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -194,30 +172,6 @@ func Test_GetChangePassword_Passes(t *testing.T) {
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
-	}
-}
-
-func Test_GetChangePassword_NoAuth_Fails(t *testing.T) {
-	// initialize
-	app := new_mock_app()
-	defer app.database.Close(app.context)
-
-	request, e := http.NewRequest("GET", "/admin/password/notauthenticated", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	app.new_mock_request(request)
-
-	// tests
-	if status := app.recorder.Code; status != http.StatusSeeOther {
-		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
-	}
-
-	header := app.recorder.Header()
-	redirect := header.Get("X-Redirect")
-	if redirect != "Forbidden" {
-		t.Errorf("Expected header %s, but got %s", "Forbidden", redirect)
 	}
 }
 
@@ -237,7 +191,7 @@ func Test_PostChangePassword_Passes(t *testing.T) {
 	form_data := data.Encode()
 
 	// Create a POST request with the form data
-	request, e := http.NewRequest("POST", "/admin/password/authenticated", strings.NewReader(form_data))
+	request, e := http.NewRequest("POST", "/admin/password", strings.NewReader(form_data))
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -285,7 +239,7 @@ func Test_PostChangePassword_UnconfirmedNewPassword_Fails(t *testing.T) {
 	form_data := data.Encode()
 
 	// Create a POST request with the form data
-	request, e := http.NewRequest("POST", "/admin/password/authenticated", strings.NewReader(form_data))
+	request, e := http.NewRequest("POST", "/admin/password", strings.NewReader(form_data))
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -334,7 +288,7 @@ func Test_PostChangePassword_InvalidNewPassword_Fails(t *testing.T) {
 		form_data := data.Encode()
 
 		// Create a POST request with the form data
-		request, e := http.NewRequest("POST", "/admin/password/authenticated", strings.NewReader(form_data))
+		request, e := http.NewRequest("POST", "/admin/password", strings.NewReader(form_data))
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -368,7 +322,7 @@ func Test_GetLogout_Passes(t *testing.T) {
 	app := new_mock_app()
 	defer app.database.Close(app.context)
 
-	request, e := http.NewRequest("GET", "/admin/logout/authenticated", nil)
+	request, e := http.NewRequest("GET", "/admin/logout", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -393,23 +347,25 @@ func new_mock_database() (database pgxmock.PgxConnIface) {
 	return database
 }
 
-// func new_mock_client() (client *clients.SMTPClient) {
-// 	cfg := "test"
-// 	client, _ = clients.NewSMTPClient(&cfg)
+func new_mock_client() (client *clients.SMTPClient) {
+	cfg := "test"
+	client, _ = clients.NewSMTPClient(&cfg)
 
-// 	return client
-// }
+	return client
+}
 
 func new_mock_app() App {
 	var recorder *httptest.ResponseRecorder
 	var context *gin.Context
 	var database pgxmock.PgxConnIface
+	var client *clients.SMTPClient
 	var dh *handlers.DatabaseHandler
 	var store cookie.Store
 	var admin *gin.RouterGroup
 
 	recorder = httptest.NewRecorder()
 	database = new_mock_database()
+	client = new_mock_client()
 	dh = handlers.NewDatabaseHandler(database)
 
 	router := gin.Default()
@@ -419,62 +375,35 @@ func new_mock_app() App {
 	store = cookie.NewStore([]byte("test"))
 	router.Use(sessions.Sessions("test", store))
 
+	router.GET("/health", handlers.HealthCheck)
+	router.GET("/home", routes.Home)
 	router.GET("/login", routes.GetLogin)
-	router.POST("/login", func(c *gin.Context) {
-		routes.PostLogin(c, dh)
-	})
+	router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, dh) })
+	router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, dh, client) })
+	router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, dh) })
 
 	admin = router.Group("/admin")
-	admin.GET("/dashboard/:a", func(c *gin.Context) {
-		mock_login(c)
-		mock_admin_middleware(c)
-		adminRoutes.GetAdminDashboard(c)
-	})
-	admin.GET("/password/:a", func(c *gin.Context) {
-		mock_login(c)
-		mock_admin_middleware(c)
-		adminRoutes.GetChangePassword(c)
-	})
-	admin.POST("/password/:a", func(c *gin.Context) {
-		mock_login(c)
-		mock_admin_middleware(c)
-		adminRoutes.PostChangePassword(c, dh)
-	})
-	admin.GET("/logout/:a", func(c *gin.Context) {
-		mock_login(c)
-		mock_admin_middleware(c)
-		adminRoutes.Logout(c)
-	})
+	admin.GET("/dashboard", adminRoutes.GetAdminDashboard)
+	admin.GET("/password", adminRoutes.GetChangePassword)
+	admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, dh) })
+	admin.GET("/logout", adminRoutes.Logout)
+	admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, dh) })
+	admin.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, dh) })
+	admin.GET("/confirmed", func(c *gin.Context) { _ = adminRoutes.GetConfirmedSubscribers(c, dh) })
+	admin.GET("/newsletter", adminRoutes.GetNewsletter)
+	admin.POST("/newsletter", func(c *gin.Context) { adminRoutes.PostNewsletter(c, dh, client) })
 
 	return App{
 		recorder: recorder,
 		context:  context,
 		router:   router,
 		database: database,
+		client:   client,
 	}
 }
 
 func (app *App) new_mock_request(request *http.Request) {
 	app.router.ServeHTTP(app.recorder, request)
-}
-
-func mock_login(c *gin.Context) {
-	a := c.Param("a")
-	if a == "authenticated" {
-		session := sessions.Default(c)
-		session.Set("user", "user")
-	}
-}
-
-func mock_admin_middleware(c *gin.Context) {
-	session := sessions.Default(c)
-	user := session.Get("user")
-	if user == nil {
-		c.Header("X-Redirect", "Forbidden")
-		c.Redirect(http.StatusSeeOther, "../login")
-		c.Abort()
-		return
-	}
 }
 
 // // TODO NEED TO BE AMENDED
