@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgtype"
 
@@ -52,4 +54,44 @@ func GetSavedResponse(c *gin.Context, dh *handlers.DatabaseHandler, id, key stri
 	response.Body = io.NopCloser(bytes.NewReader(body))
 
 	return response, nil
+}
+
+func SaveResponse(c *gin.Context, dh *handlers.DatabaseHandler, response *http.Response) error {
+	session := sessions.Default(c)
+	id := session.Get("user")
+	key := session.Get("key")
+
+	status := uint16(response.StatusCode)
+	headers := response.Header
+	body := response.Body
+
+	var e error
+	var hp HeaderPair
+	var headerPairRecord []HeaderPair
+	for key, values := range headers {
+		for _, value := range values {
+			hp.name = key
+			rawValue, e := strconv.Atoi(value)
+			if e != nil {
+				return e
+			}
+			hp.value = uint8(rawValue)
+
+			headerPairRecord = append(headerPairRecord, hp)
+		}
+	}
+
+	// Read the response body into a byte slice
+	bodyBytes, e := io.ReadAll(body)
+	if e != nil {
+		return e
+	}
+
+	query := "INSERT id, idempotency_key, response_status_code, response_headers, response_body, created INTO idempotency VALUES ($1, $2, $3, $4, $5, now())"
+	_, e = dh.DB.Exec(c, query, id, key, status, headerPairRecord, bodyBytes)
+	if e != nil {
+		return e
+	}
+
+	return e
 }

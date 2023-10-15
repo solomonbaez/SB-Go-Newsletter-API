@@ -23,6 +23,7 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 
 	requestID := c.GetString("requestID")
 	key, _ := c.GetPostForm("idempotency_key")
+	session.Set("key", key)
 	newsletter.Key = key
 
 	savedResponse, _ := idempotency.GetSavedResponse(c, dh, id, key)
@@ -62,5 +63,7 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"requestID": requestID, "message": "Emails successfully delivered"})
+	c.Redirect(http.StatusSeeOther, "dashboard")
+	httpResponse := c.Request.Response
+	idempotency.SaveResponse(c, dh, httpResponse)
 }
