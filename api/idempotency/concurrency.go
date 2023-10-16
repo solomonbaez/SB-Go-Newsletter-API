@@ -34,8 +34,8 @@ func TryProcessing(c *gin.Context, dh *handlers.DatabaseHandler) (*NextAction, e
 		return nil, e
 	}
 
-	query = "INSERT INTO idempotency_headers idempotency_key VALUES $1"
-	headerRows, e := tx.Exec(c, query, id, key)
+	query = "INSERT INTO idempotency_headers (idempotency_key) VALUES ($1)"
+	headerRows, e := tx.Exec(c, query, key)
 	if e != nil {
 		return nil, e
 	}

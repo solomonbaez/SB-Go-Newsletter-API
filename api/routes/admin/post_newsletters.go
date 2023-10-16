@@ -29,13 +29,17 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 	session.Set("key", key)
 	newsletter.Key = key
 
-	savedResponse, _ := idempotency.GetSavedResponse(c, dh, id, key)
-	// Early return if no response is saved
-	if savedResponse != nil {
+	transaction, e := idempotency.TryProcessing(c, dh)
+	if e != nil {
+		response = "Failed to process transaction"
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
+	}
+
+	if transaction.StartProcessing {
 		log.Info().
 			Str("requestID", requestID).
 			Str("id", id).
-			Msg("Fetched saved response")
+			Msg("No saved response, processing request...")
 
 		body.Title, _ = c.GetPostForm("title")
 		body.Text, _ = c.GetPostForm("text")
@@ -68,22 +72,40 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 				continue
 			}
 		}
+
+		httpResponse, e := SeeOther(c, "/admin/dashboard")
+		if e != nil {
+			response = "Failed to parse request body"
+			handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
+			return
+		}
+
+		if e := idempotency.SaveResponse(c, dh, httpResponse); e != nil {
+			response = "Failed to save http response"
+			handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
+			return
+		}
+
+		c.Redirect(http.StatusSeeOther, "dashboard")
+	} else {
+		log.Info().
+			Str("requestID", requestID).
+			Str("id", id).
+			Msg("Fetched saved response")
+
+		httpResponse := transaction.SavedResponse
+		status := httpResponse.StatusCode
+		headers := httpResponse.Header
+
+		if status == http.StatusSeeOther {
+			location := headers.Get("Location")
+			c.Redirect(status, location)
+
+		} else {
+			c.JSON(status, headers)
+		}
 	}
 
-	httpResponse, e := SeeOther(c, "/admin/dashboard")
-	if e != nil {
-		response = "Failed to parse request body"
-		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
-		return
-	}
-
-	if e := idempotency.SaveResponse(c, dh, httpResponse); e != nil {
-		response = "Failed to save http response"
-		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
-		return
-	}
-
-	c.Redirect(http.StatusSeeOther, "dashboard")
 }
 
 func SeeOther(c *gin.Context, location string) (response *http.Response, e error) {
