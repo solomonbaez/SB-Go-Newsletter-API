@@ -83,6 +83,11 @@ func new_mock_app() App {
 		idempotency.GetSavedResponse(c, dh, id, key)
 	})
 
+	admin.POST("/responses", func(c *gin.Context) {
+		response, _ := adminRoutes.SeeOther(c, "admin/dashboard")
+		idempotency.SaveResponse(c, dh, response)
+	})
+
 	return App{
 		recorder: recorder,
 		context:  context,
