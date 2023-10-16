@@ -95,13 +95,13 @@ func SaveResponse(c *gin.Context, dh *handlers.DatabaseHandler, response *http.R
 		return e
 	}
 
-	query = "INSERT INTO idempotency (id, idempotency_key, response_status_code, response_body, created) VALUES ($1, $2, $3, $4, now())"
+	query = "UPDATE idempotency SET response_status_code = $3, response_body = $4 WHERE id = $1 AND idempotency_key = $2"
 	_, e = tx.Exec(c, query, id, key, status, bodyBytes)
 	if e != nil {
 		return e
 	}
 
-	query = "INSERT INTO idempotency_headers (idempotency_key, header_name, header_value) VALUES ($1, $2, $3)"
+	query = "UPDATE idempotency_headers SET header_name = $2, header_value = $3 WHERE idempotency_key = $1"
 	for _, hp := range headerPairRecord {
 		_, e = tx.Exec(c, query, key, hp.Name, hp.Value)
 		if e != nil {
