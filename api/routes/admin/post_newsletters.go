@@ -8,12 +8,35 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/idempotency"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
+
+func InsertNewsletter(c *gin.Context, tx pgx.Tx, content *models.Body) (*string, error) {
+	id := uuid.NewString()
+
+	query := `INSERT INTO newsletter_issues (
+				newsletter_issue_id, 
+				title, 
+				text_content,
+				html_content,
+				published_at,
+			 )
+			 VALUES ($1, $2, $3, $4, now())`
+	_, e := tx.Exec(
+		c, query, id, content.Title, content.Text, content.Html,
+	)
+	if e != nil {
+		return nil, e
+	}
+
+	return &id, e
+}
 
 func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients.EmailClient) {
 	var newsletter models.Newsletter
