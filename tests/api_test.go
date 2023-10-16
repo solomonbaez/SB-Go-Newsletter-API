@@ -121,12 +121,6 @@ func Test_GetConfirmedSubscribers_NoSubscribers_Passes(t *testing.T) {
 	if status := app.recorder.Code; status != http.StatusOK {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
 	}
-
-	expected_body := `{"requestID":"","subscribers":"No confirmed subscribers"}`
-	response_body := app.recorder.Body.String()
-	if response_body != expected_body {
-		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
-	}
 }
 
 func Test_GetConfirmedSubscribers_WithSubscribers_Passes(t *testing.T) {
@@ -153,12 +147,6 @@ func Test_GetConfirmedSubscribers_WithSubscribers_Passes(t *testing.T) {
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
-	}
-
-	expected_body := fmt.Sprintf(`{"requestID":"","subscribers":[{"id":"%s","email":"test@test.com","name":"TestUser","status":"confirmed"}]}`, mock_id)
-	response_body := app.recorder.Body.String()
-	if response_body != expected_body {
-		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
 	}
 }
 

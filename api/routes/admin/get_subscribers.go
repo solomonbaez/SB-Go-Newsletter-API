@@ -139,7 +139,7 @@ func GetConfirmedSubscribers(c *gin.Context, dh *handlers.DatabaseHandler) []*mo
 				return nil
 			}
 		}
-		c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": subscribers})
+		// c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": subscribers})
 		return subscribers
 	} else {
 		response = "No confirmed subscribers"
@@ -147,7 +147,7 @@ func GetConfirmedSubscribers(c *gin.Context, dh *handlers.DatabaseHandler) []*mo
 			Str("requestID", requestID).
 			Msg(response)
 
-		c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": response})
+		// c.JSON(http.StatusOK, gin.H{"requestID": requestID, "subscribers": response})
 		return nil
 	}
 }

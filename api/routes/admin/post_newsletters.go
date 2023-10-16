@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/idempotency"
@@ -22,13 +23,18 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 	id := fmt.Sprintf("%v", session.Get("user"))
 
 	requestID := c.GetString("requestID")
-	key, _ := c.GetPostForm("idempotency_key")
+	// key, _ := c.GetPostForm("idempotency_key")
+	key := "test"
 	session.Set("key", key)
 	newsletter.Key = key
 
 	savedResponse, _ := idempotency.GetSavedResponse(c, dh, id, key)
 	// Early return if no response is saved
-	if savedResponse == nil {
+	if savedResponse != nil {
+		log.Info().
+			Str("requestID", requestID).
+			Str("id", id).
+			Msg("Fetched saved response")
 
 		body.Title, _ = c.GetPostForm("title")
 		body.Text, _ = c.GetPostForm("text")
@@ -63,7 +69,26 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 		}
 	}
 
-	c.Redirect(http.StatusSeeOther, "dashboard")
-	httpResponse := c.Request.Response
+	httpResponse := SeeOther(c, "/admin/dashboard")
+
 	idempotency.SaveResponse(c, dh, httpResponse)
+	c.Redirect(http.StatusSeeOther, "dashboard")
+}
+
+func SeeOther(c *gin.Context, location string) (response *http.Response) {
+	response = &http.Response{
+		Status:        http.StatusText(http.StatusSeeOther),
+		StatusCode:    http.StatusSeeOther,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		Header:        make(http.Header),
+		Request:       c.Request,
+		ContentLength: -1, // Set the content length as needed
+	}
+
+	// Set the "Location" header
+	response.Header.Set("Location", location)
+
+	return response
 }
