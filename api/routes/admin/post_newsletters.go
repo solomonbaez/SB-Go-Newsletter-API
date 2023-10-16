@@ -71,7 +71,12 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 
 	httpResponse := SeeOther(c, "/admin/dashboard")
 
-	idempotency.SaveResponse(c, dh, httpResponse)
+	if e := idempotency.SaveResponse(c, dh, httpResponse); e != nil {
+		response = "Failed to save http response"
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
+
 	c.Redirect(http.StatusSeeOther, "dashboard")
 }
 

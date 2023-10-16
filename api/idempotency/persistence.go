@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog/log"
 
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
 type HeaderPair struct {
 	name  string
-	value uint8
+	value []byte
 }
 
 func (hp *HeaderPair) DecodeBinary(ci *pgtype.ConnInfo, src []byte) error {
@@ -70,12 +72,12 @@ func SaveResponse(c *gin.Context, dh *handlers.DatabaseHandler, response *http.R
 	var headerPairRecord []HeaderPair
 	for key, values := range headers {
 		for _, value := range values {
+			log.Info().
+				Str("header", key).
+				Msg("")
+
 			hp.name = key
-			rawValue, e := strconv.Atoi(value)
-			if e != nil {
-				return e
-			}
-			hp.value = uint8(rawValue)
+			hp.value = []byte(value)
 
 			headerPairRecord = append(headerPairRecord, hp)
 		}
@@ -93,5 +95,53 @@ func SaveResponse(c *gin.Context, dh *handlers.DatabaseHandler, response *http.R
 		return e
 	}
 
-	return e
+	return nil
+}
+
+func GetSavedResponses(c *gin.Context, dh *handlers.DatabaseHandler) {
+	var savedResponses []*SavedResponse
+
+	rows, e := dh.DB.Query(c, "SELECT * FROM idempotency")
+	if e != nil {
+		handlers.HandleError(c, "", e, "Query error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	savedResponses, e = pgx.CollectRows[*SavedResponse](rows, BuildResponse)
+	if e != nil {
+		handlers.HandleError(c, "", e, "Collect error", http.StatusInternalServerError)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"responses": len(savedResponses)})
+}
+
+type SavedResponse struct {
+	id      string
+	key     string
+	status  int
+	headers []HeaderPair
+	body    []byte
+	created time.Time
+}
+
+func BuildResponse(row pgx.CollectableRow) (*SavedResponse, error) {
+	var id string
+	var key string
+	var status int
+	var headers []HeaderPair
+	var body []byte
+	var created time.Time
+
+	e := row.Scan(&id, &key, status, headers, body, created)
+	s := &SavedResponse{
+		id,
+		key,
+		status,
+		headers,
+		body,
+		created,
+	}
+
+	return s, e
 }
