@@ -1,7 +1,9 @@
 package routes
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -23,8 +25,7 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 	id := fmt.Sprintf("%v", session.Get("user"))
 
 	requestID := c.GetString("requestID")
-	// key, _ := c.GetPostForm("idempotency_key")
-	key := "test"
+	key, _ := c.GetPostForm("idempotency_key")
 	session.Set("key", key)
 	newsletter.Key = key
 
@@ -69,7 +70,12 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 		}
 	}
 
-	httpResponse := SeeOther(c, "/admin/dashboard")
+	httpResponse, e := SeeOther(c, "/admin/dashboard")
+	if e != nil {
+		response = "Failed to parse request body"
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
 
 	if e := idempotency.SaveResponse(c, dh, httpResponse); e != nil {
 		response = "Failed to save http response"
@@ -80,7 +86,7 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 	c.Redirect(http.StatusSeeOther, "dashboard")
 }
 
-func SeeOther(c *gin.Context, location string) (response *http.Response) {
+func SeeOther(c *gin.Context, location string) (response *http.Response, e error) {
 	response = &http.Response{
 		Status:        http.StatusText(http.StatusSeeOther),
 		StatusCode:    http.StatusSeeOther,
@@ -92,8 +98,13 @@ func SeeOther(c *gin.Context, location string) (response *http.Response) {
 		ContentLength: -1, // Set the content length as needed
 	}
 
-	// Set the "Location" header
 	response.Header.Set("Location", location)
 
-	return response
+	responseBytes, e := io.ReadAll(c.Request.Body)
+	if e != nil {
+		return nil, e
+	}
+	response.Body = io.NopCloser(bytes.NewReader(responseBytes))
+
+	return response, e
 }

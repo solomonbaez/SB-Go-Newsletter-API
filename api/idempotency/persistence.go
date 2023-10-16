@@ -2,15 +2,12 @@ package idempotency
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 
@@ -18,80 +15,100 @@ import (
 )
 
 type HeaderPair struct {
-	name  string
-	value []byte
-}
-
-func (hp *HeaderPair) DecodeBinary(ci *pgtype.ConnInfo, src []byte) error {
-	if src == nil {
-		return errors.New("NULL values can't be decoded. Scan into a &*MyType to handle NULLs")
-	}
-
-	if e := (pgtype.CompositeFields{&hp.name, &hp.value}).DecodeBinary(ci, src); e != nil {
-		return e
-	}
-
-	return nil
+	Name  string
+	Value []byte
 }
 
 func GetSavedResponse(c *gin.Context, dh *handlers.DatabaseHandler, id, key string) (*http.Response, error) {
 	var code int
-	var protoHeader HeaderPair
+	var headerPairRecord []HeaderPair
 	var body []byte
+	var e error
 
-	query := "SELECT response_status_code, response_headers, response_body FROM idempotency WHERE user_id = $1 AND idempotency_key = $2"
+	tx, e := dh.DB.Begin(c)
+	if e != nil {
+		return nil, e
+	}
 
-	e := dh.DB.QueryRow(c, query, id, key).Scan(&code, &protoHeader, &body)
+	query := "SELECT response_status_code, response_body FROM idempotency WHERE user_id = $1 AND idempotency_key = $2"
+	e = tx.QueryRow(c, query, id, key).Scan(&code, &body)
+	if e != nil {
+		return nil, e
+	}
+
+	query = "SELECT header_name, header_value FROM idempotency_headers WHERE idempotency_key = $1"
+	e = tx.QueryRow(c, query, key).Scan(&headerPairRecord)
 	if e != nil {
 		return nil, e
 	}
 
 	// Construct the response
-	proto := fmt.Sprintf("HTTP/1.%d", protoHeader.value)
 	response := &http.Response{
-		StatusCode: code,
-		Proto:      proto,
+		Status:        http.StatusText(code),
+		StatusCode:    code,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		Header:        make(http.Header),
+		ContentLength: -1, // Set the content length as needed
 	}
-
+	for _, hp := range headerPairRecord {
+		response.Header.Set(hp.Name, string(hp.Value))
+	}
 	response.Body = io.NopCloser(bytes.NewReader(body))
 
 	return response, nil
 }
 
 func SaveResponse(c *gin.Context, dh *handlers.DatabaseHandler, response *http.Response) error {
+	var query string
+	var e error
+	var headerPairRecord []HeaderPair
+
 	session := sessions.Default(c)
 	id := session.Get("user")
 	key := session.Get("key")
 
 	status := uint16(response.StatusCode)
-	headers := response.Header
-	body := response.Body
 
-	var e error
-	var hp HeaderPair
-	var headerPairRecord []HeaderPair
-	for key, values := range headers {
+	for key, values := range response.Header {
 		for _, value := range values {
 			log.Info().
 				Str("header", key).
 				Msg("")
 
-			hp.name = key
-			hp.value = []byte(value)
+			headerPair := HeaderPair{Name: key, Value: []byte(value)}
 
-			headerPairRecord = append(headerPairRecord, hp)
+			headerPairRecord = append(headerPairRecord, headerPair)
 		}
 	}
 
+	tx, e := dh.DB.Begin(c)
+	if e != nil {
+		return e
+	}
+	defer tx.Rollback(c)
+
 	// Read the response body into a byte slice
-	bodyBytes, e := io.ReadAll(body)
+	bodyBytes, e := io.ReadAll(response.Body)
 	if e != nil {
 		return e
 	}
 
-	query := "INSERT id, idempotency_key, response_status_code, response_headers, response_body, created INTO idempotency VALUES ($1, $2, $3, $4, $5, now())"
-	_, e = dh.DB.Exec(c, query, id, key, status, headerPairRecord, bodyBytes)
+	query = "INSERT INTO idempotency (id, idempotency_key, response_status_code, response_body, created) VALUES ($1, $2, $3, $4, now())"
+	_, e = tx.Exec(c, query, id, key, status, bodyBytes)
 	if e != nil {
+		return e
+	}
+
+	query = "INSERT INTO idempotency_headers (idempotency_key, header_name, header_value) VALUES ($1, $2, $3)"
+	for _, hp := range headerPairRecord {
+		_, e = tx.Exec(c, query, key, hp.Name, hp.Value)
+		if e != nil {
+			return e
+		}
+	}
+	if e := tx.Commit(c); e != nil {
 		return e
 	}
 
@@ -113,32 +130,29 @@ func GetSavedResponses(c *gin.Context, dh *handlers.DatabaseHandler) {
 		handlers.HandleError(c, "", e, "Collect error", http.StatusInternalServerError)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"responses": len(savedResponses)})
+	c.JSON(http.StatusOK, gin.H{"responses": savedResponses})
 }
 
 type SavedResponse struct {
-	id      string
-	key     string
-	status  int
-	headers []HeaderPair
-	body    []byte
-	created time.Time
+	Id      string    `json:"id"`
+	Key     string    `json:"key"`
+	Status  int       `json:"status"`
+	Body    []byte    `json:"body"`
+	Created time.Time `json:"created"`
 }
 
 func BuildResponse(row pgx.CollectableRow) (*SavedResponse, error) {
 	var id string
 	var key string
 	var status int
-	var headers []HeaderPair
 	var body []byte
 	var created time.Time
 
-	e := row.Scan(&id, &key, status, headers, body, created)
+	e := row.Scan(&id, &key, &status, &body, &created)
 	s := &SavedResponse{
 		id,
 		key,
 		status,
-		headers,
 		body,
 		created,
 	}
