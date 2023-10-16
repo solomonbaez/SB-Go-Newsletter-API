@@ -71,6 +71,11 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 				handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 				continue
 			}
+
+			log.Info().
+				Str("requestID", requestID).
+				Str("subscriber", s.Email.String()).
+				Msg("Email sent")
 		}
 
 		httpResponse, e := SeeOther(c, "/admin/dashboard")

@@ -23,6 +23,7 @@ func Test_GetLogin(t *testing.T) {
 	}
 
 	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
@@ -61,6 +62,7 @@ func Test_PostLogin_Passes(t *testing.T) {
 		)
 
 	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusSeeOther {
@@ -106,6 +108,7 @@ func Test_PostLogin_InvalidCredentials_Fails(t *testing.T) {
 		)
 
 	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusSeeOther {
@@ -132,6 +135,7 @@ func Test_GetAdminDashboard_Passes(t *testing.T) {
 	}
 
 	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
@@ -150,6 +154,7 @@ func Test_GetChangePassword_Passes(t *testing.T) {
 	}
 
 	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusOK {
@@ -193,6 +198,7 @@ func Test_PostChangePassword_Passes(t *testing.T) {
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
 	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusSeeOther {
@@ -237,6 +243,7 @@ func Test_PostChangePassword_UnconfirmedNewPassword_Fails(t *testing.T) {
 		)
 
 	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusSeeOther {
@@ -257,7 +264,6 @@ func Test_PostChangePassword_InvalidNewPassword_Fails(t *testing.T) {
 	for _, tc := range test_cases {
 		// initialize
 		app := new_mock_app()
-		defer app.database.Close(app.context)
 
 		prv_password := "user"
 		new_password := tc
@@ -296,6 +302,9 @@ func Test_PostChangePassword_InvalidNewPassword_Fails(t *testing.T) {
 		if redirect != "Invalid password" {
 			t.Errorf("Expected header %s, but got %s", "Invalid password", redirect)
 		}
+
+		app.database.ExpectationsWereMet()
+		app.database.Close(app.context)
 	}
 }
 
@@ -310,6 +319,7 @@ func Test_GetLogout_Passes(t *testing.T) {
 	}
 
 	app.new_mock_request(request)
+	defer app.database.ExpectationsWereMet()
 
 	// tests
 	if status := app.recorder.Code; status != http.StatusSeeOther {
