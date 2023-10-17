@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
@@ -68,4 +69,31 @@ func EnqueDeliveryTasks(c *gin.Context, tx pgx.Tx, newsletterIssueId string) err
 
 	tx.Commit(c)
 	return nil
+}
+
+func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) error {
+	_, _, _, e := DequeTask(c, dh)
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
+func DequeTask(c *gin.Context, dh *handlers.DatabaseHandler) (issueID, subscriberEmail *string, tx pgx.Tx, e error) {
+	tx, e = dh.DB.Begin(c)
+	if e != nil {
+		return nil, nil, nil, e
+	}
+
+	query := `SELECT newsletter_issue_id, subscriber_email
+			FROM issue_delivery_queue
+			FOR UPDATE
+			SKIP LOCKED
+			LIMIT 1`
+	e = tx.QueryRow(c, query).Scan(&issueID, &subscriberEmail)
+	if e != nil {
+		return nil, nil, nil, e
+	}
+
+	return issueID, subscriberEmail, tx, nil
 }
