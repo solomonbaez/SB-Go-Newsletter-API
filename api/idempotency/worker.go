@@ -82,7 +82,6 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 			return
 		}
 		newsletter.Content = content
-		newsletter.Key = task.NewsletterIssueID
 		if e = models.ParseNewsletter(&newsletter); e != nil {
 			log.Error().
 				Err(e).

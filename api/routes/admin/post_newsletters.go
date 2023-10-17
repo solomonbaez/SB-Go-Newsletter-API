@@ -50,7 +50,6 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 	requestID := c.GetString("requestID")
 	key, _ := c.GetPostForm("idempotency_key")
 	session.Set("key", key)
-	newsletter.Key = key
 
 	body.Title, _ = c.GetPostForm("title")
 	body.Text, _ = c.GetPostForm("text")

@@ -9,7 +9,7 @@ import (
 type Newsletter struct {
 	Recipient SubscriberEmail
 	Content   *Body
-	Key       string
+	// Key       string
 }
 
 type Body struct {
