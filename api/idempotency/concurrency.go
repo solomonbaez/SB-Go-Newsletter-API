@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
@@ -54,4 +55,21 @@ func TryProcessing(c *gin.Context, dh *handlers.DatabaseHandler) (*NextAction, e
 	}
 
 	return &NextAction{SavedResponse: savedResponse}, nil
+}
+
+func EnqueDeliveryTasks(c *gin.Context, tx pgx.Tx, newsletterIssueId string) error {
+	query := `INSERT INTO issue_delivery_queue (
+			 	newsletter_issue_id,
+				subscriber_email,
+			 )
+			 SELECT $1, email
+			 FROM subscriptions
+			 WHERE status = 'confirmed'`
+	_, e := tx.Exec(c, query, newsletterIssueId)
+	if e != nil {
+		return e
+	}
+
+	tx.Commit(c)
+	return nil
 }
