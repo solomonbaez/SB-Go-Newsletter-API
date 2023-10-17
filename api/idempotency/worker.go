@@ -20,19 +20,20 @@ const (
 )
 
 func WorkerLoop(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) {
-	for {
-		result := TryExecuteTask(c, dh, client)
-		select {
-		case outcome := <-result:
-			switch outcome {
-			case ExecutionOutcomeEmptyQueue:
-				time.Sleep(10 * time.Second)
+	resultChan := make(chan ExecutionOutcome)
 
-			case ExecutionOutcomeError:
-				time.Sleep(1 * time.Second)
-
-			case ExecutionOutcomeTaskCompleted:
-			}
+	go func() {
+		for {
+			resultChan <- TryExecuteTask(c, dh, client)
+		}
+	}()
+	for outcome := range resultChan {
+		switch outcome {
+		case ExecutionOutcomeEmptyQueue:
+			time.Sleep(10 * time.Second)
+		case ExecutionOutcomeError:
+			time.Sleep(1 * time.Second)
+		case ExecutionOutcomeTaskCompleted:
 		}
 	}
 }
@@ -43,9 +44,11 @@ type Task struct {
 }
 
 // TODO implement n_retries + execute_after columns to issue_delivery_queue to attempt retries
-func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) chan ExecutionOutcome {
+func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) ExecutionOutcome {
 	resultChan := make(chan ExecutionOutcome)
 	go func() {
+		defer close(resultChan)
+
 		task, tx, e := DequeTask(c, dh)
 		if e != nil {
 			log.Error().
@@ -104,7 +107,7 @@ func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 
 		resultChan <- ExecutionOutcomeTaskCompleted
 	}()
-	return resultChan
+	return <-resultChan
 }
 
 func DequeTask(c *gin.Context, dh *handlers.DatabaseHandler) (task *Task, tx pgx.Tx, e error) {
