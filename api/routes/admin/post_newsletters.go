@@ -149,23 +149,6 @@ func SeeOther(c *gin.Context, location string) (response *http.Response, e error
 // may need this logic
 // subscribers := GetConfirmedSubscribers(c, dh)
 // for _, s := range subscribers {
-// 	// re-parse email to ensure data integrity
-// 	newsletter.Recipient, e = models.ParseEmail(s.Email.String())
-// 	if e != nil {
-// 		response = fmt.Sprintf("Invalid email: %v", s.Email.String())
-// 		handlers.HandleError(c, requestID, e, response, http.StatusConflict)
-// 		continue
-// 	}
-// 	if e = models.ParseNewsletter(&newsletter); e != nil {
-// 		response = "Invalid newsletter"
-// 		handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
-// 		continue
-// 	}
-// 	if e = client.SendEmail(&newsletter); e != nil {
-// 		response = "Failed to send newsletter"
-// 		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
-// 		continue
-// 	}
 
 // 	log.Info().
 // 		Str("requestID", requestID).

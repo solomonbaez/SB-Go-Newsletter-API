@@ -7,9 +7,11 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog/log"
 
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
 type NextAction struct {
@@ -77,9 +79,32 @@ func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 		return e
 	}
 
+	content, e := GetIssue(c, tx, *issueID)
+	if e != nil {
+		return e
+	}
+
+	// re-parse email to ensure data integrity
+	var newsletter models.Newsletter
+	newsletter.Recipient, e = models.ParseEmail(*subscriberEmail)
+	if e != nil {
+		return e
+	}
+	newsletter.Content = content
+	if e = models.ParseNewsletter(&newsletter); e != nil {
+		return e
+	}
+	if e = client.SendEmail(&newsletter); e != nil {
+		return e
+	}
+
 	if e = DeleteTask(c, tx, *issueID, *subscriberEmail); e != nil {
 		return e
 	}
+
+	log.Info().
+		Str("subscriber", *subscriberEmail).
+		Msg("Email sent")
 
 	return nil
 }
@@ -101,6 +126,17 @@ func DequeTask(c *gin.Context, dh *handlers.DatabaseHandler) (issueID, subscribe
 	}
 
 	return issueID, subscriberEmail, tx, nil
+}
+
+func GetIssue(c *gin.Context, tx pgx.Tx, issueID string) (content *models.Body, e error) {
+	query := `SELECT title, text_content, html_content
+			FROM newsletter_issues
+			WHERE newsletter_issue_id = $1`
+	if e = tx.QueryRow(c, query, issueID).Scan(&content.Title, &content.Text, &content.Html); e != nil {
+		return nil, e
+	}
+
+	return content, nil
 }
 
 func DeleteTask(c *gin.Context, tx pgx.Tx, issueID, subscriberEmail string) (e error) {
