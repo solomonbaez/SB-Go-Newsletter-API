@@ -71,11 +71,16 @@ func EnqueDeliveryTasks(c *gin.Context, tx pgx.Tx, newsletterIssueId string) err
 	return nil
 }
 
-func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) error {
-	_, _, _, e := DequeTask(c, dh)
+func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) (e error) {
+	issueID, subscriberEmail, tx, e := DequeTask(c, dh)
 	if e != nil {
 		return e
 	}
+
+	if e = DeleteTask(c, tx, *issueID, *subscriberEmail); e != nil {
+		return e
+	}
+
 	return nil
 }
 
@@ -96,4 +101,18 @@ func DequeTask(c *gin.Context, dh *handlers.DatabaseHandler) (issueID, subscribe
 	}
 
 	return issueID, subscriberEmail, tx, nil
+}
+
+func DeleteTask(c *gin.Context, tx pgx.Tx, issueID, subscriberEmail string) (e error) {
+	query := `DELETE FROM issue_delivery_queue
+			WHERE 
+			newsletter_issue_id = $1 AND
+			subscriber_email = $2`
+	_, e = tx.Exec(c, query, issueID, subscriberEmail)
+	if e != nil {
+		return e
+	}
+
+	tx.Commit(c)
+	return nil
 }
