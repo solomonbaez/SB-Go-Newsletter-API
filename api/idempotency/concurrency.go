@@ -73,6 +73,7 @@ func EnqueDeliveryTasks(c *gin.Context, tx pgx.Tx, newsletterIssueId string) err
 	return nil
 }
 
+// TODO implement n_retries + execute_after columns to issue_delivery_queue to attempt retries
 func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) (e error) {
 	issueID, subscriberEmail, tx, e := DequeTask(c, dh)
 	if e != nil {
