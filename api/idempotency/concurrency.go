@@ -12,7 +12,7 @@ import (
 )
 
 type NextAction struct {
-	StartProcessing bool
+	StartProcessing pgx.Tx
 	SavedResponse   *http.Response
 }
 
@@ -41,12 +41,8 @@ func TryProcessing(c *gin.Context, dh *handlers.DatabaseHandler) (*NextAction, e
 		return nil, e
 	}
 
-	if e := tx.Commit(c); e != nil {
-		return nil, e
-	}
-
 	if idempotencyRows.RowsAffected() > 0 && headerRows.RowsAffected() > 0 {
-		return &NextAction{StartProcessing: true}, nil
+		return &NextAction{StartProcessing: tx}, nil
 	}
 
 	savedResponse, e := GetSavedResponse(c, dh, id, key)
@@ -59,12 +55,12 @@ func TryProcessing(c *gin.Context, dh *handlers.DatabaseHandler) (*NextAction, e
 
 func EnqueDeliveryTasks(c *gin.Context, tx pgx.Tx, newsletterIssueId string) error {
 	query := `INSERT INTO issue_delivery_queue (
-			 	newsletter_issue_id,
-				subscriber_email,
-			 )
-			 SELECT $1, email
-			 FROM subscriptions
-			 WHERE status = 'confirmed'`
+				newsletter_issue_id,
+				subscriber_email
+			)
+			SELECT $1, email
+			FROM subscriptions
+			WHERE status = 'confirmed'`
 	_, e := tx.Exec(c, query, newsletterIssueId)
 	if e != nil {
 		return e

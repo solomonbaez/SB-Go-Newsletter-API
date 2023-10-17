@@ -25,9 +25,9 @@ func InsertNewsletter(c *gin.Context, tx pgx.Tx, content *models.Body) (*string,
 				title, 
 				text_content,
 				html_content,
-				published_at,
-			 )
-			 VALUES ($1, $2, $3, $4, now())`
+				published_at
+			)
+			VALUES ($1, $2, $3, $4, now())`
 	_, e := tx.Exec(
 		c, query, id, content.Title, content.Text, content.Html,
 	)
@@ -52,53 +52,40 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 	session.Set("key", key)
 	newsletter.Key = key
 
+	body.Title, _ = c.GetPostForm("title")
+	body.Text, _ = c.GetPostForm("text")
+	body.Html, _ = c.GetPostForm("html")
+
+	if e = models.ParseNewsletter(&body); e != nil {
+		response = "Failed to parse newsletter"
+		handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
+		return
+	}
+	newsletter.Content = &body
+
 	transaction, e := idempotency.TryProcessing(c, dh)
 	if e != nil {
 		response = "Failed to process transaction"
 		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 	}
 
-	if transaction.StartProcessing {
+	if transaction.StartProcessing != nil {
 		log.Info().
 			Str("requestID", requestID).
 			Str("id", id).
 			Msg("No saved response, processing request...")
 
-		body.Title, _ = c.GetPostForm("title")
-		body.Text, _ = c.GetPostForm("text")
-		body.Html, _ = c.GetPostForm("html")
-
-		if e = models.ParseNewsletter(&body); e != nil {
-			response = "Failed to parse newsletter"
-			handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
+		issue_id, e := InsertNewsletter(c, transaction.StartProcessing, newsletter.Content)
+		if e != nil {
+			response = "Failed to store newsletter"
+			handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 			return
 		}
-		newsletter.Content = &body
 
-		subscribers := GetConfirmedSubscribers(c, dh)
-		for _, s := range subscribers {
-			// re-parse email to ensure data integrity
-			newsletter.Recipient, e = models.ParseEmail(s.Email.String())
-			if e != nil {
-				response = fmt.Sprintf("Invalid email: %v", s.Email.String())
-				handlers.HandleError(c, requestID, e, response, http.StatusConflict)
-				continue
-			}
-			if e = models.ParseNewsletter(&newsletter); e != nil {
-				response = "Invalid newsletter"
-				handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
-				continue
-			}
-			if e = client.SendEmail(&newsletter); e != nil {
-				response = "Failed to send newsletter"
-				handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
-				continue
-			}
-
-			log.Info().
-				Str("requestID", requestID).
-				Str("subscriber", s.Email.String()).
-				Msg("Email sent")
+		if e := idempotency.EnqueDeliveryTasks(c, transaction.StartProcessing, *issue_id); e != nil {
+			response = "Failed to enqueue delivery tasks"
+			handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
+			return
 		}
 
 		httpResponse, e := SeeOther(c, "/admin/dashboard")
@@ -158,3 +145,30 @@ func SeeOther(c *gin.Context, location string) (response *http.Response, e error
 
 	return response, e
 }
+
+// may need this logic
+// subscribers := GetConfirmedSubscribers(c, dh)
+// for _, s := range subscribers {
+// 	// re-parse email to ensure data integrity
+// 	newsletter.Recipient, e = models.ParseEmail(s.Email.String())
+// 	if e != nil {
+// 		response = fmt.Sprintf("Invalid email: %v", s.Email.String())
+// 		handlers.HandleError(c, requestID, e, response, http.StatusConflict)
+// 		continue
+// 	}
+// 	if e = models.ParseNewsletter(&newsletter); e != nil {
+// 		response = "Invalid newsletter"
+// 		handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
+// 		continue
+// 	}
+// 	if e = client.SendEmail(&newsletter); e != nil {
+// 		response = "Failed to send newsletter"
+// 		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
+// 		continue
+// 	}
+
+// 	log.Info().
+// 		Str("requestID", requestID).
+// 		Str("subscriber", s.Email.String()).
+// 		Msg("Email sent")
+// }
