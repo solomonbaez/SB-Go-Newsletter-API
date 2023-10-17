@@ -31,6 +31,7 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/idempotency"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
 	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/workers"
 )
 
 type App struct {
@@ -121,7 +122,7 @@ func main() {
 	// initialize server components
 	dh := handlers.NewDatabaseHandler(pool)
 
-	go idempotency.WorkerLoop(parentContext, dh, client)
+	go workers.WorkerLoop(parentContext, dh, client)
 
 	router, listener, e := initializeServer(dh)
 	if e != nil {

@@ -15,6 +15,7 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/idempotency"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/workers"
 )
 
 func InsertNewsletter(c *gin.Context, tx pgx.Tx, content *models.Body) (*string, error) {
@@ -81,7 +82,7 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 			return
 		}
 
-		if e := idempotency.EnqueDeliveryTasks(c, transaction.StartProcessing, *issue_id); e != nil {
+		if e := workers.EnqueDeliveryTasks(c, transaction.StartProcessing, *issue_id); e != nil {
 			response = "Failed to enqueue delivery tasks"
 			handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 			return
