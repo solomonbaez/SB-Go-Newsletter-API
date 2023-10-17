@@ -18,7 +18,8 @@ type Database interface {
 }
 
 type DatabaseHandler struct {
-	DB Database
+	DB      Database
+	Context context.Context
 }
 
 func NewDatabaseHandler(db Database) *DatabaseHandler {

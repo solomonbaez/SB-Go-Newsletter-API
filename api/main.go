@@ -121,6 +121,7 @@ func main() {
 
 	// initialize server components
 	dh := handlers.NewDatabaseHandler(pool)
+	dh.Context = parentContext
 
 	go workers.WorkerLoop(parentContext, dh, client)
 

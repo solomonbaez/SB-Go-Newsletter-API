@@ -64,3 +64,26 @@ func Test_PostSaveResponse_Passes(t *testing.T) {
 	app.new_mock_request(request)
 	app.database.ExpectationsWereMet()
 }
+
+func Test_TryProcessing_Passes(t *testing.T) {
+	app := new_mock_app()
+	defer app.database.Close(app.context)
+
+	request, e := http.NewRequest("POST", "/responses", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	query := "UPDATE idempotency SET response_status_code = $3, response_body = $4 WHERE user_id = $1 AND idempotency_key = $2"
+	app.database.ExpectExec(query).
+		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	query = "UPDATE idempotency_headers SET header_name = $2, header_value = $3 WHERE idempotency_key = $1"
+	app.database.ExpectExec(query).
+		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	app.new_mock_request(request)
+	app.database.ExpectationsWereMet()
+}
