@@ -79,6 +79,8 @@ var enableAuth = false
 
 // server
 func main() {
+	parentContext := context.Background()
+
 	if enableTracing {
 		exporter, e := stdouttrace.New(stdouttrace.WithPrettyPrint())
 		if e != nil {
@@ -103,7 +105,7 @@ func main() {
 
 	var e error
 	// initialize database
-	pool, e = initializeDatabase(context.Background())
+	pool, e = initializeDatabase(parentContext)
 	if e != nil {
 		log.Fatal().
 			Err(e).
@@ -118,6 +120,8 @@ func main() {
 
 	// initialize server components
 	dh := handlers.NewDatabaseHandler(pool)
+
+	go idempotency.WorkerLoop(parentContext, dh, client)
 
 	router, listener, e := initializeServer(dh)
 	if e != nil {

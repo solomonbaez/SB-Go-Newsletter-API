@@ -145,13 +145,3 @@ func SeeOther(c *gin.Context, location string) (response *http.Response, e error
 
 	return response, e
 }
-
-// may need this logic
-// subscribers := GetConfirmedSubscribers(c, dh)
-// for _, s := range subscribers {
-
-// 	log.Info().
-// 		Str("requestID", requestID).
-// 		Str("subscriber", s.Email.String()).
-// 		Msg("Email sent")
-// }

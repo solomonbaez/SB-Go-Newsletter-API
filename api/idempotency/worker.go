@@ -1,9 +1,9 @@
 package idempotency
 
 import (
+	"context"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
@@ -19,7 +19,7 @@ const (
 	ExecutionOutcomeTaskCompleted
 )
 
-func WorkerLoop(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) {
+func WorkerLoop(c context.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) {
 	resultChan := make(chan ExecutionOutcome)
 
 	go func() {
@@ -30,8 +30,12 @@ func WorkerLoop(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SM
 	for outcome := range resultChan {
 		switch outcome {
 		case ExecutionOutcomeEmptyQueue:
+			log.Info().
+				Msg("Empty queue")
 			time.Sleep(10 * time.Second)
 		case ExecutionOutcomeError:
+			log.Info().
+				Msg("Error")
 			time.Sleep(1 * time.Second)
 		case ExecutionOutcomeTaskCompleted:
 		}
@@ -44,7 +48,7 @@ type Task struct {
 }
 
 // TODO implement n_retries + execute_after columns to issue_delivery_queue to attempt retries
-func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) ExecutionOutcome {
+func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) ExecutionOutcome {
 	resultChan := make(chan ExecutionOutcome)
 	go func() {
 		defer close(resultChan)
@@ -53,7 +57,7 @@ func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 		if e != nil {
 			log.Error().
 				Err(e).
-				Msg(e.Error())
+				Msg("Deque" + e.Error())
 			resultChan <- ExecutionOutcomeEmptyQueue
 			return
 		}
@@ -62,7 +66,7 @@ func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 		if e != nil {
 			log.Error().
 				Err(e).
-				Msg(e.Error())
+				Msg("Get" + e.Error())
 			resultChan <- ExecutionOutcomeError
 			return
 		}
@@ -73,22 +77,23 @@ func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 		if e != nil {
 			log.Error().
 				Err(e).
-				Msg(e.Error())
+				Msg("Parse Email" + e.Error())
 			resultChan <- ExecutionOutcomeError
 			return
 		}
 		newsletter.Content = content
+		newsletter.Key = task.NewsletterIssueID
 		if e = models.ParseNewsletter(&newsletter); e != nil {
 			log.Error().
 				Err(e).
-				Msg(e.Error())
+				Msg("Parse Newsletter" + e.Error())
 			resultChan <- ExecutionOutcomeError
 			return
 		}
 		if e = client.SendEmail(&newsletter); e != nil {
 			log.Error().
 				Err(e).
-				Msg(e.Error())
+				Msg("Send Email" + e.Error())
 			resultChan <- ExecutionOutcomeError
 			return
 		}
@@ -96,7 +101,7 @@ func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 		if e = DeleteTask(c, tx, task); e != nil {
 			log.Error().
 				Err(e).
-				Msg(e.Error())
+				Msg("Delete" + e.Error())
 			resultChan <- ExecutionOutcomeError
 			return
 		}
@@ -110,12 +115,13 @@ func TryExecuteTask(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 	return <-resultChan
 }
 
-func DequeTask(c *gin.Context, dh *handlers.DatabaseHandler) (task *Task, tx pgx.Tx, e error) {
+func DequeTask(c context.Context, dh *handlers.DatabaseHandler) (task *Task, tx pgx.Tx, e error) {
 	tx, e = dh.DB.Begin(c)
 	if e != nil {
 		return nil, nil, e
 	}
 
+	task = &Task{}
 	query := `SELECT newsletter_issue_id, subscriber_email
 			FROM issue_delivery_queue
 			FOR UPDATE
@@ -129,7 +135,8 @@ func DequeTask(c *gin.Context, dh *handlers.DatabaseHandler) (task *Task, tx pgx
 	return task, tx, nil
 }
 
-func GetIssue(c *gin.Context, tx pgx.Tx, issueID string) (content *models.Body, e error) {
+func GetIssue(c context.Context, tx pgx.Tx, issueID string) (content *models.Body, e error) {
+	content = &models.Body{}
 	query := `SELECT title, text_content, html_content
 			FROM newsletter_issues
 			WHERE newsletter_issue_id = $1`
@@ -140,7 +147,7 @@ func GetIssue(c *gin.Context, tx pgx.Tx, issueID string) (content *models.Body, 
 	return content, nil
 }
 
-func DeleteTask(c *gin.Context, tx pgx.Tx, task *Task) (e error) {
+func DeleteTask(c context.Context, tx pgx.Tx, task *Task) (e error) {
 	query := `DELETE FROM issue_delivery_queue
 			WHERE 
 			newsletter_issue_id = $1 AND
@@ -154,7 +161,7 @@ func DeleteTask(c *gin.Context, tx pgx.Tx, task *Task) (e error) {
 	return nil
 }
 
-func EnqueDeliveryTasks(c *gin.Context, tx pgx.Tx, newsletterIssueId string) error {
+func EnqueDeliveryTasks(c context.Context, tx pgx.Tx, newsletterIssueId string) error {
 	query := `INSERT INTO issue_delivery_queue (
 				newsletter_issue_id,
 				subscriber_email
