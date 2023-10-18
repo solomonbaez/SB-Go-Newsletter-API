@@ -13,17 +13,8 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
-
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv/v1.18.0"
 
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
@@ -74,34 +65,11 @@ func init() {
 }
 
 var pool *pgxpool.Pool
-var enableTracing = false
 var enableAuth = false
 
 // server
 func main() {
 	parentContext := context.Background()
-
-	if enableTracing {
-		exporter, e := stdouttrace.New(stdouttrace.WithPrettyPrint())
-		if e != nil {
-			log.Fatal().
-				Err(e).
-				Msg("Failed to initialize telemetry")
-
-			return
-		}
-
-		tp := trace.NewTracerProvider(
-			trace.WithSyncer(exporter),
-			trace.WithSampler(trace.AlwaysSample()),
-			trace.WithResource(resource.NewWithAttributes(
-				semconv.SchemaURL,
-				semconv.ServiceNameKey.String("newsletter"),
-			)),
-		)
-
-		otel.SetTracerProvider(tp)
-	}
 
 	var e error
 	// initialize database
@@ -201,10 +169,6 @@ func initializeServer(dh *handlers.DatabaseHandler) (*gin.Engine, net.Listener, 
 
 	router.LoadHTMLGlob(filepath.Join(templatesDir, "*"))
 
-	// custom middleware
-	if enableTracing {
-		router.Use(TraceMiddleware())
-	}
 	// disable during dev
 	if enableAuth {
 		var users gin.Accounts
@@ -253,32 +217,6 @@ func initializeServer(dh *handlers.DatabaseHandler) (*gin.Engine, net.Listener, 
 	}
 
 	return router, listener, nil
-}
-
-func TraceMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// request identification
-		requestID := uuid.NewString()
-		c.Set("requestID", requestID)
-		log.Info().
-			Str("requestID", requestID).
-			Msg(fmt.Sprintf("New %v request...", c.Request.Method))
-
-		// tracing
-		spanCTX := otel.
-			GetTextMapPropagator().
-			Extract(
-				c.Request.Context(),
-				propagation.HeaderCarrier(c.Request.Header),
-			)
-
-		ctx, span := otel.Tracer("http-server").Start(spanCTX, c.Request.URL.Path)
-		span.SetAttributes(attribute.String("requestID", requestID))
-		defer span.End()
-
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
-	}
 }
 
 func AdminMiddleware() gin.HandlerFunc {
