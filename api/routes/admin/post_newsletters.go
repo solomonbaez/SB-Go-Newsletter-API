@@ -63,7 +63,7 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 	}
 	newsletter.Content = &body
 
-	transaction, e := idempotency.TryProcessing(c, dh)
+	transaction, e := idempotency.TryProcessing(c, dh, id, key)
 	if e != nil {
 		response = "Failed to process transaction"
 		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
@@ -95,7 +95,7 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 			return
 		}
 
-		if e := idempotency.SaveResponse(c, dh, httpResponse); e != nil {
+		if e := idempotency.SaveResponse(c, dh, id, key, httpResponse); e != nil {
 			response = "Failed to save http response"
 			handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 			return

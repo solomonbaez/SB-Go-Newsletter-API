@@ -28,7 +28,6 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/idempotency"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
 	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/workers"
@@ -233,8 +232,6 @@ func initializeServer(dh *handlers.DatabaseHandler) (*gin.Engine, net.Listener, 
 	admin.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, dh) })
 	admin.GET("/newsletter", adminRoutes.GetNewsletter)
 	admin.POST("/newsletter", func(c *gin.Context) { adminRoutes.PostNewsletter(c, dh, client) })
-
-	admin.GET("/responses", func(c *gin.Context) { idempotency.GetSavedResponses(c, dh) })
 
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/home", routes.Home)

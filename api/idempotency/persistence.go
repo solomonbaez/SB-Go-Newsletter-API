@@ -2,13 +2,10 @@ package idempotency
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
-	"time"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
@@ -19,7 +16,7 @@ type HeaderPair struct {
 	Value []byte
 }
 
-func GetSavedResponse(c *gin.Context, dh *handlers.DatabaseHandler, id, key string) (*http.Response, error) {
+func GetSavedResponse(c context.Context, dh *handlers.DatabaseHandler, id, key string) (*http.Response, error) {
 	var code int
 	var headerPairRecord []HeaderPair
 	var body []byte
@@ -60,14 +57,10 @@ func GetSavedResponse(c *gin.Context, dh *handlers.DatabaseHandler, id, key stri
 	return response, nil
 }
 
-func SaveResponse(c *gin.Context, dh *handlers.DatabaseHandler, response *http.Response) error {
+func SaveResponse(c context.Context, dh *handlers.DatabaseHandler, id, key string, response *http.Response) error {
 	var query string
 	var e error
 	var headerPairRecord []HeaderPair
-
-	session := sessions.Default(c)
-	id := session.Get("user")
-	key := session.Get("key")
 
 	status := uint16(response.StatusCode)
 
@@ -113,49 +106,4 @@ func SaveResponse(c *gin.Context, dh *handlers.DatabaseHandler, response *http.R
 	}
 
 	return nil
-}
-
-func GetSavedResponses(c *gin.Context, dh *handlers.DatabaseHandler) {
-	var savedResponses []*SavedResponse
-
-	rows, e := dh.DB.Query(c, "SELECT * FROM idempotency")
-	if e != nil {
-		handlers.HandleError(c, "", e, "Query error", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	savedResponses, e = pgx.CollectRows[*SavedResponse](rows, BuildResponse)
-	if e != nil {
-		handlers.HandleError(c, "", e, "Collect error", http.StatusInternalServerError)
-	}
-
-	c.JSON(http.StatusOK, gin.H{"responses": savedResponses})
-}
-
-type SavedResponse struct {
-	Id      string    `json:"id"`
-	Key     string    `json:"key"`
-	Status  int       `json:"status"`
-	Body    []byte    `json:"body"`
-	Created time.Time `json:"created"`
-}
-
-func BuildResponse(row pgx.CollectableRow) (*SavedResponse, error) {
-	var id string
-	var key string
-	var status int
-	var body []byte
-	var created time.Time
-
-	e := row.Scan(&id, &key, &status, &body, &created)
-	s := &SavedResponse{
-		id,
-		key,
-		status,
-		body,
-		created,
-	}
-
-	return s, e
 }

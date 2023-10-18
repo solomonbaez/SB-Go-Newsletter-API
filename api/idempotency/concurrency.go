@@ -1,11 +1,9 @@
 package idempotency
 
 import (
-	"fmt"
+	"context"
 	"net/http"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
@@ -16,13 +14,9 @@ type NextAction struct {
 	SavedResponse   *http.Response
 }
 
-func TryProcessing(c *gin.Context, dh *handlers.DatabaseHandler) (*NextAction, error) {
+func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key string) (*NextAction, error) {
 	var query string
 	var e error
-
-	session := sessions.Default(c)
-	id := fmt.Sprintf("%s", session.Get("user"))
-	key := fmt.Sprintf("%s", session.Get("key"))
 
 	tx, e := dh.DB.Begin(c)
 	if e != nil {
