@@ -14,11 +14,12 @@ import (
 
 // TODO Sanitize credentials again?
 func ValidateCredentials(c context.Context, dh *handlers.DatabaseHandler, credentials *models.Credentials) (id *string, e error) {
+	var userID string
 	var passwordHash string
 
 	var user_e error
 	query := "SELECT id, password_hash FROM users WHERE username=$1"
-	e = dh.DB.QueryRow(c, query, credentials.Username).Scan(&id, &passwordHash)
+	e = dh.DB.QueryRow(c, query, credentials.Username).Scan(&userID, &passwordHash)
 	if e != nil {
 		log.Error().
 			Err(e).
@@ -36,6 +37,7 @@ func ValidateCredentials(c context.Context, dh *handlers.DatabaseHandler, creden
 		return nil, e
 	}
 
+	id = &userID
 	return id, nil
 }
 
