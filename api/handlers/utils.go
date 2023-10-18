@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"math/big"
 	"net/http"
@@ -19,7 +20,7 @@ func HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, "OK")
 }
 
-func StoreToken(c *gin.Context, tx pgx.Tx, id string, token string) error {
+func StoreToken(c context.Context, tx pgx.Tx, id string, token string) error {
 	query := "INSERT INTO subscription_tokens (subscription_token, subscriber_id) VALUES ($1, $2)"
 	_, e := tx.Exec(c, query, token, id)
 	if e != nil {

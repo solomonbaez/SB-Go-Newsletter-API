@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -85,7 +86,7 @@ func Subscribe(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMT
 	c.JSON(http.StatusCreated, gin.H{"requestID": requestID, "subscriber": subscriber})
 }
 
-func insertSubscriber(c *gin.Context, client *clients.SMTPClient, tx pgx.Tx, subscriber models.Subscriber) error {
+func insertSubscriber(c context.Context, client *clients.SMTPClient, tx pgx.Tx, subscriber models.Subscriber) error {
 	var e error
 
 	newID := uuid.NewString()

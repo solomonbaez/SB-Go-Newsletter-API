@@ -25,7 +25,7 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 		if e != nil {
 			log.Error().
 				Err(e).
-				Msg("Deque" + e.Error())
+				Msg("Deque Task")
 			resultChan <- ExecutionOutcomeEmptyQueue
 			return
 		}
@@ -34,7 +34,7 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 		if e != nil {
 			log.Error().
 				Err(e).
-				Msg("Get" + e.Error())
+				Msg("Get Issue")
 			resultChan <- ExecutionOutcomeError
 			return
 		}
@@ -45,7 +45,7 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 		if e != nil {
 			log.Error().
 				Err(e).
-				Msg("Parse Email" + e.Error())
+				Msg("Parse Email")
 			resultChan <- ExecutionOutcomeError
 			return
 		}
@@ -53,14 +53,14 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 		if e = models.ParseNewsletter(&newsletter); e != nil {
 			log.Error().
 				Err(e).
-				Msg("Parse Newsletter" + e.Error())
+				Msg("Parse Newsletter")
 			resultChan <- ExecutionOutcomeError
 			return
 		}
 		if e = client.SendEmail(&newsletter); e != nil {
 			log.Error().
 				Err(e).
-				Msg("Send Email" + e.Error())
+				Msg("Send Email")
 			resultChan <- ExecutionOutcomeError
 			return
 		}
@@ -68,7 +68,7 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 		if e = DeleteTask(c, tx, task); e != nil {
 			log.Error().
 				Err(e).
-				Msg("Delete" + e.Error())
+				Msg("Delete")
 			resultChan <- ExecutionOutcomeError
 			return
 		}
