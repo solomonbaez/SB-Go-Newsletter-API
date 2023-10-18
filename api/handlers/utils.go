@@ -20,9 +20,9 @@ func HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, "OK")
 }
 
-func StoreToken(c context.Context, tx pgx.Tx, id string, token string) error {
+func StoreToken(c context.Context, tx pgx.Tx, id string, token string) (e error) {
 	query := "INSERT INTO subscription_tokens (subscription_token, subscriber_id) VALUES ($1, $2)"
-	_, e := tx.Exec(c, query, token, id)
+	_, e = tx.Exec(c, query, token, id)
 	if e != nil {
 		return e
 	}
@@ -32,13 +32,13 @@ func StoreToken(c context.Context, tx pgx.Tx, id string, token string) error {
 	return nil
 }
 
-func GenerateCSPRNG(tokenLen int) (string, error) {
+func GenerateCSPRNG(tokenLen int) (csprng string, e error) {
 	b := make([]byte, tokenLen)
-
 	maxIndex := big.NewInt(int64(len(charset)))
 
+	var r *big.Int
 	for i := range b {
-		r, e := rand.Int(rand.Reader, maxIndex)
+		r, e = rand.Int(rand.Reader, maxIndex)
 		if e != nil {
 			return "", e
 		}
@@ -46,25 +46,29 @@ func GenerateCSPRNG(tokenLen int) (string, error) {
 		b[i] = charset[r.Int64()]
 	}
 
-	return string(b), nil
+	csprng = string(b)
+	return csprng, nil
 }
 
-func BuildSubscriber(row pgx.CollectableRow) (*models.Subscriber, error) {
+func BuildSubscriber(row pgx.CollectableRow) (subscriber *models.Subscriber, e error) {
 	var id string
 	var email models.SubscriberEmail
 	var name models.SubscriberName
 	var created time.Time
 	var status string
 
-	e := row.Scan(&id, &email, &name, &created, &status)
-	s := &models.Subscriber{
+	if e = row.Scan(&id, &email, &name, &created, &status); e != nil {
+		return nil, e
+	}
+
+	subscriber = &models.Subscriber{
 		ID:     id,
 		Email:  email,
 		Name:   name,
 		Status: status,
 	}
 
-	return s, e
+	return subscriber, nil
 }
 
 func HandleError(c *gin.Context, id string, e error, response string, status int) {

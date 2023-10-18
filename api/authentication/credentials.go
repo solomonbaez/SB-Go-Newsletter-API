@@ -13,47 +13,47 @@ import (
 )
 
 // TODO Sanitize credentials again?
-func ValidateCredentials(c context.Context, dh *handlers.DatabaseHandler, credentials *models.Credentials) (*string, error) {
-	var id string
-	var password_hash string
+func ValidateCredentials(c context.Context, dh *handlers.DatabaseHandler, credentials *models.Credentials) (id *string, e error) {
+	var passwordHash string
 
 	var user_e error
 	query := "SELECT id, password_hash FROM users WHERE username=$1"
-	e := dh.DB.QueryRow(c, query, credentials.Username).Scan(&id, &password_hash)
+	e = dh.DB.QueryRow(c, query, credentials.Username).Scan(&id, &passwordHash)
 	if e != nil {
 		log.Error().
 			Err(e).
 			Msg("Invalid username")
 
 		// prevent timing attacks!
-		password_hash = models.BaseHash
+		passwordHash = models.BaseHash
 		user_e = e
 	}
 
-	if e := models.ValidatePHC(credentials.Password, password_hash); e != nil {
+	if e = models.ValidatePHC(credentials.Password, passwordHash); e != nil {
 		if user_e != nil {
 			e = user_e
 		}
 		return nil, e
 	}
 
-	return &id, nil
+	return id, nil
 }
 
-func ParseField(n string) (string, error) {
+func ParseField(field string) (parsed *string, e error) {
 	// injection check
-	for _, r := range n {
+	for _, r := range field {
 		c := string(r)
 		if strings.Contains(models.InvalidRunes, c) {
-			return "", fmt.Errorf("invalid character in name: %v", c)
+			return nil, fmt.Errorf("invalid character in name: %v", c)
 		}
 	}
 
 	// empty field check
-	nTrim := strings.Trim(n, " ")
-	if nTrim == "" {
-		return "", errors.New("name cannot be empty or whitespace")
+	trimmedField := strings.Trim(field, " ")
+	if trimmedField == "" {
+		return nil, errors.New("field cannot be empty or whitespace")
 	}
 
-	return n, nil
+	parsed = &field
+	return parsed, nil
 }

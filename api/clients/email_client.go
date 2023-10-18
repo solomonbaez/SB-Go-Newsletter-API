@@ -55,7 +55,7 @@ func NewSMTPClient(cfgFile *string) (*SMTPClient, error) {
 	return client, nil
 }
 
-func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) error {
+func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) (e error) {
 	m := gomail.NewMessage()
 	m.SetHeader("From", client.Sender.String())
 	m.SetHeader("To", newsletter.Recipient.String())
@@ -64,7 +64,7 @@ func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) error {
 	m.AddAlternative("text/html", newsletter.Content.Html)
 
 	dialer := gomail.NewDialer(client.SmtpServer, client.SmtpPort, client.smtpUsername, client.smtpPassword)
-	if e := dialer.DialAndSend(m); e != nil {
+	if e = dialer.DialAndSend(m); e != nil {
 		log.Error().
 			Err(e).
 			Msg("Failed to send email")

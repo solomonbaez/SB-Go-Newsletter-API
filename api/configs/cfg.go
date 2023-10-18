@@ -14,8 +14,8 @@ func init() {
 
 // APPLICATION
 type AppSettings struct {
-	Database DBSettings
-	Redis    RedisSettings
+	Database *DBSettings
+	Redis    *RedisSettings
 	Port     uint16
 }
 
@@ -27,7 +27,7 @@ type DBSettings struct {
 	name string
 }
 
-func (db DBSettings) ConnectionString() string {
+func (db *DBSettings) ConnectionString() string {
 	return fmt.Sprintf(
 		"postgres://%v:%v@%v:%v/%v",
 		db.user, db.pass, db.host, db.port, db.name,
@@ -40,7 +40,7 @@ type RedisSettings struct {
 	Conn string
 }
 
-func (r RedisSettings) ConnectionString() string {
+func (r *RedisSettings) ConnectionString() string {
 	return fmt.Sprintf("%s:%s", r.host, r.port)
 }
 
@@ -49,7 +49,7 @@ func ConfigureApp() (*AppSettings, error) {
 		return nil, e
 	}
 
-	database := DBSettings{
+	database := &DBSettings{
 		viper.GetString("database.username"),
 		viper.GetString("database.password"),
 		viper.GetString("database.host"),
@@ -57,7 +57,7 @@ func ConfigureApp() (*AppSettings, error) {
 		viper.GetString("database.database_name"),
 	}
 
-	redis := RedisSettings{
+	redis := &RedisSettings{
 		viper.GetString("redis.host"),
 		viper.GetString("redis.port"),
 		viper.GetString("redis.conn"),

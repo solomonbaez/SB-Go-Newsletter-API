@@ -14,16 +14,13 @@ type NextAction struct {
 	SavedResponse   *http.Response
 }
 
-func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key string) (*NextAction, error) {
-	var query string
-	var e error
-
+func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key string) (next *NextAction, e error) {
 	tx, e := dh.DB.Begin(c)
 	if e != nil {
 		return nil, e
 	}
 
-	query = "INSERT INTO idempotency (id, idempotency_key, created) VALUES ($1, $2, now()) ON CONFLICT DO NOTHING"
+	query := "INSERT INTO idempotency (id, idempotency_key, created) VALUES ($1, $2, now()) ON CONFLICT DO NOTHING"
 	idempotencyRows, e := tx.Exec(c, query, id, key)
 	if e != nil {
 		return nil, e

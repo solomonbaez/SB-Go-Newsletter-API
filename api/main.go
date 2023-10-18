@@ -34,8 +34,8 @@ import (
 )
 
 type App struct {
-	database configs.DBSettings
-	redis    configs.RedisSettings
+	database *configs.DBSettings
+	redis    *configs.RedisSettings
 	port     uint16
 }
 
@@ -120,7 +120,6 @@ func main() {
 
 	// initialize server components
 	dh := handlers.NewDatabaseHandler(pool)
-	dh.Context = parentContext
 
 	go workers.WorkerLoop(parentContext, dh, client)
 

@@ -10,7 +10,7 @@ import (
 // TODO switch to cfg baseURL
 const BaseURL = "http://localhost:8000"
 
-type Database interface {
+type DatabaseInterface interface {
 	Exec(c context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
 	Query(c context.Context, sql string, args ...interface{}) (pgx.Rows, error)
 	QueryRow(c context.Context, sql string, args ...interface{}) pgx.Row
@@ -18,13 +18,13 @@ type Database interface {
 }
 
 type DatabaseHandler struct {
-	DB      Database
-	Context context.Context
+	DB      DatabaseInterface
+	Context *context.Context
 }
 
-func NewDatabaseHandler(db Database) *DatabaseHandler {
+func NewDatabaseHandler(database DatabaseInterface) *DatabaseHandler {
 	return &DatabaseHandler{
-		DB: db,
+		DB: database,
 	}
 }
 
