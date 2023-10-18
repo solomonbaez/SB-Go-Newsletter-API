@@ -18,8 +18,8 @@ type Body struct {
 	Html  string `json:"html"`
 }
 
-func ParseNewsletter(c interface{}) error {
-	v := reflect.ValueOf(c).Elem()
+func ParseNewsletter(newsletter interface{}) error {
+	v := reflect.ValueOf(newsletter).Elem()
 	nFields := v.NumField()
 
 	for i := 0; i < nFields; i++ {

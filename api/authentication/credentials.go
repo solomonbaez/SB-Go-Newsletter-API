@@ -1,23 +1,21 @@
 package authentication
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
 
 // TODO Sanitize credentials again?
-func ValidateCredentials(c *gin.Context, dh *handlers.DatabaseHandler, credentials *models.Credentials) (*string, error) {
+func ValidateCredentials(c context.Context, dh *handlers.DatabaseHandler, credentials *models.Credentials) (*string, error) {
 	var id string
 	var password_hash string
-
-	requestID := c.GetString("requestID")
 
 	var user_e error
 	query := "SELECT id, password_hash FROM users WHERE username=$1"
@@ -38,11 +36,6 @@ func ValidateCredentials(c *gin.Context, dh *handlers.DatabaseHandler, credentia
 		}
 		return nil, e
 	}
-
-	log.Info().
-		Str("requestID", requestID).
-		Str("userID", id).
-		Msg("Successfully validated user credentials")
 
 	return &id, nil
 }

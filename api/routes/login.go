@@ -46,8 +46,8 @@ func PostLogin(c *gin.Context, dh *handlers.DatabaseHandler) {
 	}
 
 	log.Info().
-		Str("id", *id).
-		Msg("login")
+		Str("user", *id).
+		Msg("logged in")
 
 	session.Set("user", id)
 	session.Save()
