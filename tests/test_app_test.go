@@ -1,7 +1,6 @@
 package api_test
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/idempotency"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
 	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
 )
@@ -76,17 +74,6 @@ func new_mock_app() App {
 	admin.GET("/confirmed", func(c *gin.Context) { _ = adminRoutes.GetConfirmedSubscribers(c, dh) })
 	admin.GET("/newsletter", adminRoutes.GetNewsletter)
 	admin.POST("/newsletter", func(c *gin.Context) { adminRoutes.PostNewsletter(c, dh, client) })
-	admin.GET("/responses", func(c *gin.Context) {
-		session := sessions.Default(c)
-		id := fmt.Sprintf("%s", session.Get("user"))
-		key := fmt.Sprintf("%s", session.Get("key"))
-		idempotency.GetSavedResponse(c, dh, id, key)
-	})
-
-	admin.POST("/responses", func(c *gin.Context) {
-		response, _ := adminRoutes.SeeOther(c, "admin/dashboard")
-		idempotency.SaveResponse(c, dh, response)
-	})
 
 	return App{
 		recorder: recorder,
