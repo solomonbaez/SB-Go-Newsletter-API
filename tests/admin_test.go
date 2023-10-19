@@ -16,15 +16,34 @@ import (
 	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
 )
 
-func Test_GetLogin(t *testing.T) {
+func TestAdmin(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   func(*testing.T)
+	}{
+		{"GetLogin", getLogin},
+		{"PostLogin", postLogin},
+		{"GetAdminDashboard", getAdminDashboard},
+		{"GetChangePassword", getChangePassword},
+		{"PostChangePassword", postChangePassword},
+		{"GetLogout", getLogout},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, test.fn)
+	}
+}
+
+func getLogin(t *testing.T) {
 	test := &struct {
 		name           string
 		expectedStatus int
 	}{
-		"Test case - GET request to /login",
+		"(+) Test case -> GET request to /login -> passes",
 		http.StatusOK,
 	}
 
+	t.Parallel()
 	// initialize
 	app := new_mock_app()
 	app.router.GET("/login", routes.GetLogin)
@@ -39,13 +58,13 @@ func Test_GetLogin(t *testing.T) {
 	defer app.database.ExpectationsWereMet()
 
 	// tests
-	if status := app.recorder.Code; status != test.expectedStatus {
-		t.Errorf("Expected status code %v, but got %v", test.expectedStatus, status)
+	if returnedStatus := app.recorder.Code; returnedStatus != test.expectedStatus {
+		t.Errorf("Expected status code %v, but got %v", test.expectedStatus, returnedStatus)
 	}
 }
 
 // TODO research how to seed records into pgxmock tables
-func Test_PostLogin(t *testing.T) {
+func postLogin(t *testing.T) {
 	// base credentials to test against
 	seedCredentials := &struct {
 		userID       string
@@ -67,21 +86,21 @@ func Test_PostLogin(t *testing.T) {
 		expectedHeader string
 	}{
 		{
-			"Test case 1 - POST request to /login with valid credentials",
+			"(+) Test case 1 -> POST request to /login with valid credentials -> passes",
 			"user",
 			"password",
 			http.StatusSeeOther,
 			"Login",
 		},
 		{
-			"Test case 2 - POST request to /login with invalid username",
+			"(-) Test case 2 -> POST request to /login with invalid username -> fails",
 			"resu",
 			"password",
 			http.StatusSeeOther,
 			"Forbidden",
 		},
 		{
-			"Test case 2 - POST request to /login with invalid password",
+			"(-) Test case 3 -> POST request to /login with invalid password -> fails",
 			"user",
 			"drowssap",
 			http.StatusSeeOther,
@@ -90,10 +109,11 @@ func Test_PostLogin(t *testing.T) {
 	}
 
 	// parallelize tests
-	// t.Parallel()
+	t.Parallel()
+	var app App
 	for _, tc := range *testCases {
 		// initialize
-		app := new_mock_app()
+		app = new_mock_app()
 		app.router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, app.dh) })
 		defer app.database.Close(app.context)
 
@@ -135,13 +155,21 @@ func Test_PostLogin(t *testing.T) {
 	}
 }
 
-func Test_GetAdminDashboard_Passes(t *testing.T) {
+func getAdminDashboard(t *testing.T) {
+	test := &struct {
+		name           string
+		expectedStatus int
+	}{
+		"(+) Test case -> GET request to /admin/dashboard -> passes",
+		http.StatusOK,
+	}
+
+	t.Parallel()
 	// initialize
 	app := new_mock_app()
-	defer app.database.Close(app.context)
-
 	admin = app.router.Group("/admin")
 	admin.GET("/dashboard", adminRoutes.GetAdminDashboard)
+	defer app.database.Close(app.context)
 
 	// this is not a precise mock of the behvior due to param injection
 	// but the end-to-end behavior is exact
@@ -154,18 +182,26 @@ func Test_GetAdminDashboard_Passes(t *testing.T) {
 	defer app.database.ExpectationsWereMet()
 
 	// tests
-	if status := app.recorder.Code; status != http.StatusOK {
-		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	if returnedStatus := app.recorder.Code; returnedStatus != test.expectedStatus {
+		t.Errorf("Expected status code %v, but got %v", test.expectedStatus, returnedStatus)
 	}
 }
 
-func Test_GetChangePassword_Passes(t *testing.T) {
+func getChangePassword(t *testing.T) {
+	test := &struct {
+		name           string
+		expectedStatus int
+	}{
+		"(+) Test case -> GET request to /admin/dashboard -> passes",
+		http.StatusOK,
+	}
+
+	t.Parallel()
 	// initialize
 	app := new_mock_app()
-	defer app.database.Close(app.context)
-
 	admin = app.router.Group("/admin")
 	admin.GET("/password", adminRoutes.GetChangePassword)
+	defer app.database.Close(app.context)
 
 	request, e := http.NewRequest("GET", "/admin/password", nil)
 	if e != nil {
@@ -176,131 +212,106 @@ func Test_GetChangePassword_Passes(t *testing.T) {
 	defer app.database.ExpectationsWereMet()
 
 	// tests
-	if status := app.recorder.Code; status != http.StatusOK {
-		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	if returnedStatus := app.recorder.Code; returnedStatus != test.expectedStatus {
+		t.Errorf("Expected status code %v, but got %v", test.expectedStatus, returnedStatus)
 	}
 }
 
-func Test_PostChangePassword_Passes(t *testing.T) {
-	// initialize
-	app := new_mock_app()
-	defer app.database.Close(app.context)
-
-	admin = app.router.Group("/admin")
-	admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, app.dh) })
-
-	prv_password := "user"
-	new_password := "passwordthatislongerthan12characters"
-
-	// Create a URL-encoded form data string
-	data := url.Values{}
-	data.Set("current_password", prv_password)
-	data.Set("new_password", new_password)
-	data.Set("new_password_confirm", new_password)
-	form_data := data.Encode()
-
-	// Create a POST request with the form data
-	request, e := http.NewRequest("POST", "/admin/password", strings.NewReader(form_data))
-	if e != nil {
-		t.Fatal(e)
+func postChangePassword(t *testing.T) {
+	// base credentials to test against
+	seedCredentials := &struct {
+		userID       string
+		username     string
+		password     string
+		passwordHash string
+	}{
+		userID:   uuid.NewString(),
+		username: "user",
+		password: "password",
 	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	seedCredentials.passwordHash, _ = models.GeneratePHC(seedCredentials.password)
 
-	mock_id := uuid.NewString()
-	prv_password_hash, _ := models.GeneratePHC(prv_password)
-	app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "password_hash"}).
-				AddRow(mock_id, prv_password_hash),
-		)
-
-	app.database.ExpectExec(`UPDATE users SET`).
-		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
-		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
-
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
-
-	// tests
-	if status := app.recorder.Code; status != http.StatusSeeOther {
-		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
+	testCases := &[]struct {
+		name               string
+		username           string
+		password           string
+		newPassword        string
+		confirmNewPassword string
+		expectedStatus     int
+		expectedHeader     string
+	}{
+		{
+			"(+) Test case 1 -> POST request to /admin/password with valid credentials and confirmed password-> passes",
+			"user",
+			"password",
+			"passwordthatislongerthan12characters",
+			"passwordthatislongerthan12characters",
+			http.StatusSeeOther,
+			"Password change",
+		},
+		{
+			"(-) Test case 2 -> POST request to /admin/password with invalid username -> fails",
+			"resu",
+			"password",
+			"passwordthatislongerthan12characters",
+			"passwordthatislongerthan12characters",
+			http.StatusSeeOther,
+			"Forbidden",
+		},
+		{
+			"(-) Test case 3 -> POST request to /admin/password with invalid password -> fails",
+			"user",
+			"drowssap",
+			"passwordthatislongerthan12characters",
+			"passwordthatislongerthan12characters",
+			http.StatusSeeOther,
+			"Forbidden",
+		},
+		{
+			"(-) Test case 4 -> POST request to /admin/password with unconfirmed password -> fails",
+			"user",
+			"password",
+			"unconfirmedpasswordthatislongerthan12characters",
+			"passwordthatislongerthan12characters",
+			http.StatusSeeOther,
+			"Fields must match",
+		},
+		{
+			"(-) Test case 5 -> POST request to /admin/password with password less than 12 characters -> fails",
+			"user",
+			"password",
+			"tooshort",
+			"passwordthatislongerthan12characters",
+			http.StatusSeeOther,
+			"Fields must match",
+		},
+		{
+			"(-) Test case 5 -> POST request to /admin/password with password longer than 128 characters -> fails",
+			"user",
+			"password",
+			"toolong" + strings.Repeat("a", 128),
+			"passwordthatislongerthan12characters",
+			http.StatusSeeOther,
+			"Fields must match",
+		},
 	}
-	header := app.recorder.Header()
-	redirect := header.Get("X-Redirect")
-	if redirect != "Password change" {
-		t.Errorf("Expected header %s, but got %s", "Password change", redirect)
-	}
-}
 
-func Test_PostChangePassword_UnconfirmedNewPassword_Fails(t *testing.T) {
-	// initialize
-	app := new_mock_app()
-	defer app.database.Close(app.context)
-
-	admin = app.router.Group("/admin")
-	admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, app.dh) })
-
-	prv_password := "user"
-	new_password := "passwordthatislongerthan12characters"
-
-	// Create a URL-encoded form data string
-	data := url.Values{}
-	data.Set("current_password", prv_password)
-	data.Set("new_password", new_password)
-	data.Set("new_password_confirm", "")
-	form_data := data.Encode()
-
-	// Create a POST request with the form data
-	request, e := http.NewRequest("POST", "/admin/password", strings.NewReader(form_data))
-	if e != nil {
-		t.Fatal(e)
-	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	mock_id := uuid.NewString()
-	prv_password_hash, _ := models.GeneratePHC(prv_password)
-	app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "password_hash"}).
-				AddRow(mock_id, prv_password_hash),
-		)
-
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
-
-	// tests
-	if status := app.recorder.Code; status != http.StatusSeeOther {
-		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
-	}
-	header := app.recorder.Header()
-	redirect := header.Get("X-Redirect")
-	if redirect != "Fields must match" {
-		t.Errorf("Expected header %s, but got %s", "Fields must match", redirect)
-	}
-}
-
-func Test_PostChangePassword_InvalidNewPassword_Fails(t *testing.T) {
-	test_cases := []string{
-		"tooshort",
-		"toolong" + strings.Repeat("a", 128),
-	}
-	for _, tc := range test_cases {
+	// parallelize tests
+	t.Parallel()
+	var app App
+	for _, tc := range *testCases {
 		// initialize
-		app := new_mock_app()
+		app = new_mock_app()
+		defer app.database.Close(app.context)
 
 		admin = app.router.Group("/admin")
 		admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, app.dh) })
 
-		prv_password := "user"
-		new_password := tc
-
 		// Create a URL-encoded form data string
 		data := url.Values{}
-		data.Set("current_password", prv_password)
-		data.Set("new_password", new_password)
-		data.Set("new_password_confirm", new_password)
+		data.Set("current_password", tc.password)
+		data.Set("new_password", tc.newPassword)
+		data.Set("new_password_confirm", tc.confirmNewPassword)
 		form_data := data.Encode()
 
 		// Create a POST request with the form data
@@ -310,39 +321,52 @@ func Test_PostChangePassword_InvalidNewPassword_Fails(t *testing.T) {
 		}
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-		mock_id := uuid.NewString()
-		prv_password_hash, _ := models.GeneratePHC(prv_password)
-		app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
-			WithArgs(pgxmock.AnyArg()).
-			WillReturnRows(
+		query := app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
+			WithArgs(pgxmock.AnyArg())
+		if tc.username == seedCredentials.username {
+			query.WillReturnRows(
 				pgxmock.NewRows([]string{"id", "password_hash"}).
-					AddRow(mock_id, prv_password_hash),
+					AddRow(seedCredentials.userID, seedCredentials.passwordHash),
 			)
+		} else {
+			query.WillReturnError(errors.New("Invalid credentials"))
+		}
+
+		app.database.ExpectExec(`UPDATE users SET`).
+			WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+			WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
 		app.new_mock_request(request)
+		defer app.database.ExpectationsWereMet()
 
 		// tests
-		if status := app.recorder.Code; status != http.StatusSeeOther {
-			t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
+		if responseStatus := app.recorder.Code; responseStatus != tc.expectedStatus {
+			t.Errorf("Expected status code %v, but got %v", tc.expectedStatus, responseStatus)
 		}
-		header := app.recorder.Header()
-		redirect := header.Get("X-Redirect")
-		if redirect != "Invalid password" {
-			t.Errorf("Expected header %s, but got %s", "Invalid password", redirect)
+		responseHeader := app.recorder.Header().Get("X-Redirect")
+		if responseHeader != tc.expectedHeader {
+			t.Errorf("Expected header %s, but got %s", tc.expectedHeader, responseHeader)
 		}
-
-		app.database.ExpectationsWereMet()
-		app.database.Close(app.context)
 	}
 }
 
-func Test_GetLogout_Passes(t *testing.T) {
+func getLogout(t *testing.T) {
+	test := &struct {
+		name           string
+		expectedStatus int
+		expectedHeader string
+	}{
+		"(+) Test case -> GET request to /admin/logout -> passes",
+		http.StatusSeeOther,
+		"Logged out",
+	}
+
+	t.Parallel()
 	// initialize
 	app := new_mock_app()
-	defer app.database.Close(app.context)
-
 	admin = app.router.Group("/admin")
 	admin.GET("/logout", adminRoutes.Logout)
+	defer app.database.Close(app.context)
 
 	request, e := http.NewRequest("GET", "/admin/logout", nil)
 	if e != nil {
@@ -353,14 +377,13 @@ func Test_GetLogout_Passes(t *testing.T) {
 	defer app.database.ExpectationsWereMet()
 
 	// tests
-	if status := app.recorder.Code; status != http.StatusSeeOther {
-		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
+	if responseStatus := app.recorder.Code; responseStatus != test.expectedStatus {
+		t.Errorf("Expected status code %v, but got %v", test.expectedStatus, responseStatus)
 	}
 
-	header := app.recorder.Header()
-	redirect := header.Get("X-Redirect")
-	if redirect != "Logged out" {
-		t.Errorf("Expected header %s, but got %s", "Logged out", redirect)
+	responseHeader := app.recorder.Header().Get("X-Redirect")
+	if responseHeader != test.expectedHeader {
+		t.Errorf("Expected header %s, but got %s", test.expectedHeader, responseHeader)
 	}
 }
 
