@@ -7,15 +7,22 @@ import (
 
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
+	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
 )
+
+var admin *gin.RouterGroup
 
 func Test_GetLogin(t *testing.T) {
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	app.router.GET("/login", routes.GetLogin)
 
 	request, e := http.NewRequest("GET", "/login", nil)
 	if e != nil {
@@ -35,6 +42,8 @@ func Test_PostLogin_Passes(t *testing.T) {
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	app.router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, app.dh) })
 
 	mock_username := "user"
 	mock_password := "password"
@@ -80,6 +89,8 @@ func Test_PostLogin_InvalidCredentials_Fails(t *testing.T) {
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	app.router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, app.dh) })
 
 	mock_username := "user"
 	mock_password := "password"
@@ -127,6 +138,9 @@ func Test_GetAdminDashboard_Passes(t *testing.T) {
 	app := new_mock_app()
 	defer app.database.Close(app.context)
 
+	admin = app.router.Group("/admin")
+	admin.GET("/dashboard", adminRoutes.GetAdminDashboard)
+
 	// this is not a precise mock of the behvior due to param injection
 	// but the end-to-end behavior is exact
 	request, e := http.NewRequest("GET", "/admin/dashboard", nil)
@@ -148,6 +162,9 @@ func Test_GetChangePassword_Passes(t *testing.T) {
 	app := new_mock_app()
 	defer app.database.Close(app.context)
 
+	admin = app.router.Group("/admin")
+	admin.GET("/password", adminRoutes.GetChangePassword)
+
 	request, e := http.NewRequest("GET", "/admin/password", nil)
 	if e != nil {
 		t.Fatal(e)
@@ -166,6 +183,9 @@ func Test_PostChangePassword_Passes(t *testing.T) {
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	admin = app.router.Group("/admin")
+	admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, app.dh) })
 
 	prv_password := "user"
 	new_password := "passwordthatislongerthan12characters"
@@ -216,6 +236,9 @@ func Test_PostChangePassword_UnconfirmedNewPassword_Fails(t *testing.T) {
 	app := new_mock_app()
 	defer app.database.Close(app.context)
 
+	admin = app.router.Group("/admin")
+	admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, app.dh) })
+
 	prv_password := "user"
 	new_password := "passwordthatislongerthan12characters"
 
@@ -265,6 +288,9 @@ func Test_PostChangePassword_InvalidNewPassword_Fails(t *testing.T) {
 		// initialize
 		app := new_mock_app()
 
+		admin = app.router.Group("/admin")
+		admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, app.dh) })
+
 		prv_password := "user"
 		new_password := tc
 
@@ -312,6 +338,9 @@ func Test_GetLogout_Passes(t *testing.T) {
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	admin = app.router.Group("/admin")
+	admin.GET("/logout", adminRoutes.Logout)
 
 	request, e := http.NewRequest("GET", "/admin/logout", nil)
 	if e != nil {

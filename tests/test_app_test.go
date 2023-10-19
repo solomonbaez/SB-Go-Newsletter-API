@@ -20,6 +20,7 @@ type App struct {
 	context  *gin.Context
 	router   *gin.Engine
 	database pgxmock.PgxConnIface
+	dh       *handlers.DatabaseHandler
 	client   *clients.SMTPClient
 }
 
@@ -59,16 +60,10 @@ func new_mock_app() App {
 
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/home", routes.Home)
-	router.GET("/login", routes.GetLogin)
-	router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, dh) })
 	router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, dh, client) })
 	router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, dh) })
 
 	admin = router.Group("/admin")
-	admin.GET("/dashboard", adminRoutes.GetAdminDashboard)
-	admin.GET("/password", adminRoutes.GetChangePassword)
-	admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, dh) })
-	admin.GET("/logout", adminRoutes.Logout)
 	admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, dh) })
 	admin.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, dh) })
 	admin.GET("/confirmed", func(c *gin.Context) { _ = adminRoutes.GetConfirmedSubscribers(c, dh) })
@@ -80,6 +75,7 @@ func new_mock_app() App {
 		context:  context,
 		router:   router,
 		database: database,
+		dh:       dh,
 		client:   client,
 	}
 }
