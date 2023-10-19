@@ -18,23 +18,45 @@ import (
 	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
 )
 
-func Test_HealthCheck_Returns_OK(t *testing.T) {
+func TestAPI(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   func(*testing.T)
+	}{
+		{"HealthCheck", healthCheck},
+		{"GetSubscribers", getSubscribers},
+		{"GetConfirmedSubscribers", getConfirmedSubscribers},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, test.fn)
+	}
+}
+
+func healthCheck(t *testing.T) {
+	test := &struct {
+		name           string
+		expectedStatus int
+	}{
+		"(+) Test case -> GET request to /health -> passes",
+		http.StatusOK,
+	}
+
+	t.Parallel()
 	// initialize
 	app := new_mock_app()
+	app.router.GET("/health", handlers.HealthCheck)
 	defer app.database.Close(app.context)
 
-	app.router.GET("/health", handlers.HealthCheck)
-
-	// server initialization
 	request, e := http.NewRequest("GET", "/health", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 
-	// tests
+	// assertions
 	app.new_mock_request(request)
-	if status := app.recorder.Code; status != http.StatusOK {
-		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	if responseStatus := app.recorder.Code; responseStatus != test.expectedStatus {
+		t.Errorf("Expected status code %v, but got %v", http.StatusOK, responseStatus)
 	}
 
 	expected_body := `"OK"`
@@ -44,127 +66,147 @@ func Test_HealthCheck_Returns_OK(t *testing.T) {
 	}
 }
 
-func Test_GetSubscribers_NoSubscribers_Passes(t *testing.T) {
-	// initialize
-	app := new_mock_app()
-	defer app.database.Close(app.context)
-
-	admin = app.router.Group("/admin")
-	admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, app.dh) })
-
-	request, e := http.NewRequest("GET", "/admin/subscribers", nil)
-	if e != nil {
-		t.Fatal(e)
+func getSubscribers(t *testing.T) {
+	seedSubscriber := &struct {
+		id      string
+		email   models.SubscriberEmail
+		name    models.SubscriberName
+		created time.Time
+		status  string
+	}{
+		uuid.NewString(),
+		models.SubscriberEmail("user@example.com"),
+		models.SubscriberName("user"),
+		time.Now(),
+		"pending",
 	}
 
-	app.database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
-		pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}),
-	)
-
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
-
-	// tests
-	if status := app.recorder.Code; status != http.StatusOK {
-		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	testCases := &[]struct {
+		name           string
+		subscribers    bool
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			"(+) Test case 1 -> GET request to /subscribers with no subscribers -> passes",
+			false,
+			http.StatusOK,
+			`{"requestID":"","subscribers":"No subscribers"}`,
+		},
+		{
+			"(+) Test case 2 -> GET request to /subscribers with subscribers -> passes",
+			true,
+			http.StatusOK,
+			fmt.Sprintf(
+				`{"requestID":"","subscribers":[{"id":"%s","email":"%s","name":"%s","status":"%s"}]}`,
+				seedSubscriber.id,
+				seedSubscriber.email,
+				seedSubscriber.name,
+				seedSubscriber.status,
+			),
+		},
 	}
 
-	expected_body := `{"requestID":"","subscribers":"No subscribers"}`
-	response_body := app.recorder.Body.String()
-	if response_body != expected_body {
-		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
+	t.Parallel()
+	for _, tc := range *testCases {
+		// initialize
+		app := new_mock_app()
+		admin = app.router.Group("/admin")
+		admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, app.dh) })
+		defer app.database.Close(app.context)
+
+		request, e := http.NewRequest("GET", "/admin/subscribers", nil)
+		if e != nil {
+			t.Fatal(e)
+		}
+
+		if tc.subscribers {
+			app.database.ExpectQuery(`SELECT \* FROM subscriptions`).
+				WillReturnRows(
+					pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
+						AddRow(
+							seedSubscriber.id,
+							seedSubscriber.email,
+							seedSubscriber.name,
+							seedSubscriber.created,
+							seedSubscriber.status,
+						),
+				)
+		} else {
+			app.database.ExpectQuery(`SELECT \* FROM subscriptions`).
+				WillReturnRows(
+					pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}),
+				)
+		}
+
+		app.new_mock_request(request)
+		defer app.database.ExpectationsWereMet()
+
+		// tests
+		if responseStatus := app.recorder.Code; responseStatus != tc.expectedStatus {
+			t.Errorf("Expected status code %v, but got %v", tc.expectedStatus, responseStatus)
+		}
+
+		responseBody := app.recorder.Body.String()
+		if responseBody != tc.expectedBody {
+			t.Errorf("Expected body %v, but got %v", tc.expectedBody, responseBody)
+		}
 	}
 }
 
-func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
-	// initialization
-	app := new_mock_app()
-	defer app.database.Close(app.context)
-
-	admin = app.router.Group("/admin")
-	admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, app.dh) })
-
-	request, e := http.NewRequest("GET", "/admin/subscribers", nil)
-	if e != nil {
-		t.Fatal(e)
+func getConfirmedSubscribers(t *testing.T) {
+	seedSubscriber := &struct {
+		id      string
+		email   models.SubscriberEmail
+		name    models.SubscriberName
+		created time.Time
+		status  string
+	}{
+		uuid.NewString(),
+		models.SubscriberEmail("user@example.com"),
+		models.SubscriberName("user"),
+		time.Now(),
+		"confirmed",
 	}
 
-	mock_id := uuid.NewString()
-	app.database.ExpectQuery(`SELECT \* FROM subscriptions`).WillReturnRows(
-		pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
-			AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("TestUser"), time.Now(), "pending"),
-	)
-
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
-
-	// tests
-	if status := app.recorder.Code; status != http.StatusOK {
-		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	test := &struct {
+		name          string
+		expectedArray []*models.Subscriber
+	}{
+		"(+) Test case -> -> passes",
+		[]*models.Subscriber{
+			{
+				ID:     seedSubscriber.id,
+				Email:  seedSubscriber.email,
+				Name:   seedSubscriber.name,
+				Status: seedSubscriber.status,
+			},
+		},
 	}
 
-	expected_body := fmt.Sprintf(`{"requestID":"","subscribers":[{"id":"%v","email":"test@test.com","name":"TestUser","status":"pending"}]}`, mock_id)
-	response_body := app.recorder.Body.String()
-	if response_body != expected_body {
-		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
-	}
-}
-
-func Test_GetConfirmedSubscribers_NoSubscribers_Passes(t *testing.T) {
+	t.Parallel()
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
-
-	admin = app.router.Group("/admin")
-	admin.GET("/confirmed", func(c *gin.Context) { _ = adminRoutes.GetConfirmedSubscribers(c, app.dh) })
-
-	request, e := http.NewRequest("GET", "/admin/confirmed", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
 
 	app.database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}),
-		)
-
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
-
-	// tests
-	if status := app.recorder.Code; status != http.StatusOK {
-		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
-	}
-}
-
-func Test_GetConfirmedSubscribers_WithSubscribers_Passes(t *testing.T) {
-	// initialize
-	app := new_mock_app()
-	defer app.database.Close(app.context)
-
-	admin = app.router.Group("/admin")
-	admin.GET("/confirmed", func(c *gin.Context) { _ = adminRoutes.GetConfirmedSubscribers(c, app.dh) })
-
-	request, e := http.NewRequest("GET", "/admin/confirmed", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	mock_id := uuid.NewString()
-	app.database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
-		WithArgs(pgxmock.AnyArg()).
+		WithArgs(seedSubscriber.status).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
-				AddRow(mock_id, models.SubscriberEmail("test@test.com"), models.SubscriberName("TestUser"), time.Now(), "confirmed"),
+				AddRow(
+					seedSubscriber.id,
+					seedSubscriber.email,
+					seedSubscriber.name,
+					seedSubscriber.created,
+					seedSubscriber.status,
+				),
 		)
 
-	app.new_mock_request(request)
+	responseArray := adminRoutes.GetConfirmedSubscribers(app.context, app.dh)
 	defer app.database.ExpectationsWereMet()
 
-	// tests
-	if status := app.recorder.Code; status != http.StatusOK {
-		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	if *responseArray[0] != *test.expectedArray[0] {
+		t.Errorf("Expected array: %v, got: %v", *test.expectedArray[0], *responseArray[0])
 	}
 }
 

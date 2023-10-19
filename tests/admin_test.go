@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v3"
+
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
 	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
