@@ -8,16 +8,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v3"
 
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
+	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
 )
 
 func Test_HealthCheck_Returns_OK(t *testing.T) {
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	app.router.GET("/health", handlers.HealthCheck)
 
 	// server initialization
 	request, e := http.NewRequest("GET", "/health", nil)
@@ -42,6 +48,9 @@ func Test_GetSubscribers_NoSubscribers_Passes(t *testing.T) {
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	admin = app.router.Group("/admin")
+	admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, app.dh) })
 
 	request, e := http.NewRequest("GET", "/admin/subscribers", nil)
 	if e != nil {
@@ -71,6 +80,9 @@ func Test_GetSubscribers_WithSubscribers_Passes(t *testing.T) {
 	// initialization
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	admin = app.router.Group("/admin")
+	admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, app.dh) })
 
 	request, e := http.NewRequest("GET", "/admin/subscribers", nil)
 	if e != nil {
@@ -103,6 +115,9 @@ func Test_GetConfirmedSubscribers_NoSubscribers_Passes(t *testing.T) {
 	app := new_mock_app()
 	defer app.database.Close(app.context)
 
+	admin = app.router.Group("/admin")
+	admin.GET("/confirmed", func(c *gin.Context) { _ = adminRoutes.GetConfirmedSubscribers(c, app.dh) })
+
 	request, e := http.NewRequest("GET", "/admin/confirmed", nil)
 	if e != nil {
 		t.Fatal(e)
@@ -127,6 +142,9 @@ func Test_GetConfirmedSubscribers_WithSubscribers_Passes(t *testing.T) {
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	admin = app.router.Group("/admin")
+	admin.GET("/confirmed", func(c *gin.Context) { _ = adminRoutes.GetConfirmedSubscribers(c, app.dh) })
 
 	request, e := http.NewRequest("GET", "/admin/confirmed", nil)
 	if e != nil {
@@ -154,6 +172,9 @@ func Test_GetSubscribersByID_ValidID_Passes(t *testing.T) {
 	// initialization
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	admin = app.router.Group("/admin")
+	admin.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, app.dh) })
 
 	mock_id := uuid.NewString()
 	request, e := http.NewRequest("GET", fmt.Sprintf("/admin/subscribers/%v", mock_id), nil)
@@ -189,6 +210,9 @@ func Test_GetSubscribersByID_InvalidID_Fails(t *testing.T) {
 	app := new_mock_app()
 	defer app.database.Close(app.context)
 
+	admin = app.router.Group("/admin")
+	admin.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, app.dh) })
+
 	// Non-UUID ID
 	mock_id := "1"
 	request, e := http.NewRequest("GET", fmt.Sprintf("/admin/subscribers/%v", mock_id), nil)
@@ -223,6 +247,8 @@ func Test_Subscribe_Passes(t *testing.T) {
 	// initialization
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	app.router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, app.dh, app.client) })
 
 	data := `{"email": "test@test.com", "name": "TestUser"}`
 	request, e := http.NewRequest("POST", "/subscribe", strings.NewReader(data))
@@ -272,6 +298,7 @@ func Test_Subscribe_InvalidEmail_Fails(t *testing.T) {
 	for _, tc := range test_cases {
 		// resource intensive but necessary duplication
 		app = new_mock_app()
+		app.router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, app.dh, app.client) })
 
 		request, e = http.NewRequest("POST", "/subscribe", strings.NewReader(tc))
 		if e != nil {
@@ -317,6 +344,7 @@ func TestSubscribeInvalidNameFails(t *testing.T) {
 	for _, tc := range test_cases {
 		// resource intensive but necessary duplication
 		app = new_mock_app()
+		app.router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, app.dh, app.client) })
 
 		request, e = http.NewRequest("POST", "/subscribe", strings.NewReader(tc))
 		if e != nil {
@@ -358,6 +386,7 @@ func Test_Subscribe_MaxLengthParameters_Fails(t *testing.T) {
 	for _, tc := range test_cases {
 		// resource intensive but necessary duplication
 		app = new_mock_app()
+		app.router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, app.dh, app.client) })
 
 		request, e = http.NewRequest("POST", "/subscribe", strings.NewReader(tc))
 		if e != nil {
@@ -385,6 +414,8 @@ func Test_ConfirmSubscriber_Passes(t *testing.T) {
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	app.router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, app.dh) })
 
 	mock_token := uuid.NewString()
 	request, e := http.NewRequest("GET", fmt.Sprintf("/confirm/%s", mock_token), nil)
@@ -423,6 +454,8 @@ func Test_ConfirmSubscriber_InvalidID_Fails(t *testing.T) {
 	// initialize
 	app := new_mock_app()
 	defer app.database.Close(app.context)
+
+	app.router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, app.dh) })
 
 	mock_token := uuid.NewString()
 	request, e := http.NewRequest("GET", fmt.Sprintf("/confirm/%s", mock_token), nil)

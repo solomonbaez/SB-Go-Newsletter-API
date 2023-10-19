@@ -15,8 +15,6 @@ import (
 	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
 )
 
-var admin *gin.RouterGroup
-
 func Test_GetLogin(t *testing.T) {
 	// initialize
 	app := new_mock_app()

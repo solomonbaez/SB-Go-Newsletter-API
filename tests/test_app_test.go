@@ -11,8 +11,6 @@ import (
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
-	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
 )
 
 type App struct {
@@ -37,6 +35,8 @@ func new_mock_client() (client *clients.SMTPClient) {
 	return client
 }
 
+var admin *gin.RouterGroup
+
 func new_mock_app() App {
 	var recorder *httptest.ResponseRecorder
 	var context *gin.Context
@@ -44,7 +44,6 @@ func new_mock_app() App {
 	var client *clients.SMTPClient
 	var dh *handlers.DatabaseHandler
 	var store cookie.Store
-	var admin *gin.RouterGroup
 
 	recorder = httptest.NewRecorder()
 	database = new_mock_database()
@@ -57,18 +56,6 @@ func new_mock_app() App {
 
 	store = cookie.NewStore([]byte("test"))
 	router.Use(sessions.Sessions("test", store))
-
-	router.GET("/health", handlers.HealthCheck)
-	router.GET("/home", routes.Home)
-	router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, dh, client) })
-	router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, dh) })
-
-	admin = router.Group("/admin")
-	admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, dh) })
-	admin.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, dh) })
-	admin.GET("/confirmed", func(c *gin.Context) { _ = adminRoutes.GetConfirmedSubscribers(c, dh) })
-	admin.GET("/newsletter", adminRoutes.GetNewsletter)
-	admin.POST("/newsletter", func(c *gin.Context) { adminRoutes.PostNewsletter(c, dh, client) })
 
 	return App{
 		recorder: recorder,
