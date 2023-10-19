@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -16,11 +17,18 @@ import (
 )
 
 func Test_GetLogin(t *testing.T) {
+	test := &struct {
+		name           string
+		expectedStatus int
+	}{
+		"Test case - GET request to /login",
+		http.StatusOK,
+	}
+
 	// initialize
 	app := new_mock_app()
-	defer app.database.Close(app.context)
-
 	app.router.GET("/login", routes.GetLogin)
+	defer app.database.Close(app.context)
 
 	request, e := http.NewRequest("GET", "/login", nil)
 	if e != nil {
@@ -31,103 +39,99 @@ func Test_GetLogin(t *testing.T) {
 	defer app.database.ExpectationsWereMet()
 
 	// tests
-	if status := app.recorder.Code; status != http.StatusOK {
-		t.Errorf("Expected status code %v, but got %v", http.StatusOK, status)
+	if status := app.recorder.Code; status != test.expectedStatus {
+		t.Errorf("Expected status code %v, but got %v", test.expectedStatus, status)
 	}
 }
 
-func Test_PostLogin_Passes(t *testing.T) {
-	// initialize
-	app := new_mock_app()
-	defer app.database.Close(app.context)
-
-	app.router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, app.dh) })
-
-	mock_username := "user"
-	mock_password := "password"
-
-	// Create a URL-encoded form data string
-	data := url.Values{}
-	data.Set("username", mock_username)
-	data.Set("password", mock_password)
-	form_data := data.Encode()
-
-	// Create a POST request with the form data
-	request, e := http.NewRequest("POST", "/login", strings.NewReader(form_data))
-	if e != nil {
-		t.Fatal(e)
+// TODO research how to seed records into pgxmock tables
+func Test_PostLogin(t *testing.T) {
+	// base credentials to test against
+	seedCredentials := &struct {
+		userID       string
+		username     string
+		password     string
+		passwordHash string
+	}{
+		userID:   uuid.NewString(),
+		username: "user",
+		password: "password",
 	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	seedCredentials.passwordHash, _ = models.GeneratePHC(seedCredentials.password)
 
-	mock_id := uuid.NewString()
-	mock_password_hash, _ := models.GeneratePHC(mock_password)
-	app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "password_hash"}).
-				AddRow(mock_id, mock_password_hash),
-		)
-
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
-
-	// tests
-	if status := app.recorder.Code; status != http.StatusSeeOther {
-		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
-	}
-
-	header := app.recorder.Header()
-	redirect := header.Get("X-Redirect")
-	if redirect != "Login" {
-		t.Errorf("Expected header %s, but got %s", "Login", redirect)
-	}
-}
-
-func Test_PostLogin_InvalidCredentials_Fails(t *testing.T) {
-	// initialize
-	app := new_mock_app()
-	defer app.database.Close(app.context)
-
-	app.router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, app.dh) })
-
-	mock_username := "user"
-	mock_password := "password"
-	invalid_password := "drowssap"
-
-	// Create a URL-encoded form data string
-	data := url.Values{}
-	data.Set("username", mock_username)
-	data.Set("password", mock_password)
-	form_data := data.Encode()
-
-	// Create a POST request with the form data
-	request, e := http.NewRequest("POST", "/login", strings.NewReader(form_data))
-	if e != nil {
-		t.Fatal(e)
-	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	mock_id := uuid.NewString()
-	invalid_password_hash, _ := models.GeneratePHC(invalid_password)
-	app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "password_hash"}).
-				AddRow(mock_id, invalid_password_hash),
-		)
-
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
-
-	// tests
-	if status := app.recorder.Code; status != http.StatusSeeOther {
-		t.Errorf("Expected status code %v, but got %v", http.StatusSeeOther, status)
+	testCases := &[]struct {
+		name           string
+		username       string
+		password       string
+		expectedStatus int
+		expectedHeader string
+	}{
+		{
+			"Test case 1 - POST request to /login with valid credentials",
+			"user",
+			"password",
+			http.StatusSeeOther,
+			"Login",
+		},
+		{
+			"Test case 2 - POST request to /login with invalid username",
+			"resu",
+			"password",
+			http.StatusSeeOther,
+			"Forbidden",
+		},
+		{
+			"Test case 2 - POST request to /login with invalid password",
+			"user",
+			"drowssap",
+			http.StatusSeeOther,
+			"Forbidden",
+		},
 	}
 
-	header := app.recorder.Header()
-	redirect := header.Get("X-Redirect")
-	if redirect != "Forbidden" {
-		t.Errorf("Expected header %s, but got %s", "Forbidden", redirect)
+	// parallelize tests
+	// t.Parallel()
+	for _, tc := range *testCases {
+		// initialize
+		app := new_mock_app()
+		app.router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, app.dh) })
+		defer app.database.Close(app.context)
+
+		// Create a URL-encoded form data string
+		data := &url.Values{}
+		data.Set("username", tc.username)
+		data.Set("password", tc.password)
+		form_data := data.Encode()
+
+		request, e := http.NewRequest("POST", "/login", strings.NewReader(form_data))
+		if e != nil {
+			t.Fatal(e)
+		}
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		query := app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
+			WithArgs(tc.username)
+		if tc.username == seedCredentials.username {
+			query.WillReturnRows(
+				pgxmock.NewRows([]string{"id", "password_hash"}).
+					AddRow(seedCredentials.userID, seedCredentials.passwordHash),
+			)
+		} else {
+			query.WillReturnError(errors.New("Failed to validate credentials"))
+		}
+
+		app.new_mock_request(request)
+		defer app.database.ExpectationsWereMet()
+
+		// conditions
+		if returnedStatus := app.recorder.Code; returnedStatus != tc.expectedStatus {
+			t.Errorf("Expected status code %v, but got %v", tc.expectedStatus, returnedStatus)
+		}
+
+		returnedHeader := app.recorder.Header().Get("X-Redirect")
+		if returnedHeader != tc.expectedHeader {
+			t.Errorf("Expected header %s, but got %s", tc.expectedHeader, returnedHeader)
+		}
 	}
 }
 

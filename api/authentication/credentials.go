@@ -46,7 +46,7 @@ func ParseField(field string) (parsed *string, e error) {
 	for _, r := range field {
 		c := string(r)
 		if strings.Contains(models.InvalidRunes, c) {
-			return nil, fmt.Errorf("invalid character in name: %v", c)
+			return nil, fmt.Errorf("invalid character in field: %v", c)
 		}
 	}
 
