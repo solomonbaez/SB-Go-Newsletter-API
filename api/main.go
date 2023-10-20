@@ -65,7 +65,6 @@ func init() {
 }
 
 var pool *pgxpool.Pool
-var enableAuth = false
 
 // server
 func main() {
@@ -169,21 +168,6 @@ func initializeServer(dh *handlers.DatabaseHandler) (*gin.Engine, net.Listener, 
 
 	router.LoadHTMLGlob(filepath.Join(templatesDir, "*"))
 
-	// disable during dev
-	if enableAuth {
-		var users gin.Accounts
-		router.Use(func(c *gin.Context) {
-			users, e = adminRoutes.GetUsers(c, dh)
-			if e != nil {
-				log.Fatal().
-					Err(e).
-					Msg("Failed to enable BasicAuth")
-				return
-			}
-			gin.BasicAuth(users)
-		})
-	}
-
 	// define admin group
 	admin := router.Group("/admin")
 	admin.Use(AdminMiddleware())
@@ -197,7 +181,6 @@ func initializeServer(dh *handlers.DatabaseHandler) (*gin.Engine, net.Listener, 
 	admin.POST("/newsletter", func(c *gin.Context) { adminRoutes.PostNewsletter(c, dh, client) })
 
 	router.GET("/health", handlers.HealthCheck)
-	router.GET("/home", routes.Home)
 	router.GET("/login", routes.GetLogin)
 	router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, dh) })
 	router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, dh, client) })
