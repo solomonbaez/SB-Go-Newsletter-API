@@ -101,8 +101,12 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 			return
 		}
 
+		session.AddFlash(fmt.Sprintf("Newsletter %s posted!", *issue_id))
+		session.Save()
+
 		c.Header("X-Redirect", "Newsletter")
 		c.Redirect(http.StatusSeeOther, "dashboard")
+
 	} else if transaction.SavedResponse != nil {
 		log.Info().
 			Str("requestID", requestID).
