@@ -30,6 +30,16 @@ func TestPostNewsletter(t *testing.T) {
 			http.StatusSeeOther,
 			"Newsletter",
 		},
+		{
+			"(-) Test case 2 -> POST request to /admin/newsletter with invalid field -> fails",
+			&models.Body{
+				Title: "",
+				Text:  "test",
+				Html:  "<p>test</p>",
+			},
+			http.StatusBadRequest,
+			"",
+		},
 	}
 
 	// parallelize tests
