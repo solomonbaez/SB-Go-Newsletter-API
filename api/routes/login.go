@@ -49,7 +49,8 @@ func PostLogin(c *gin.Context, dh *handlers.DatabaseHandler) {
 		Str("user", *id).
 		Msg("logged in")
 
-	session.Set("user", id)
+	session.Set("user", credentials.Username)
+	session.Set("id", id)
 	session.Save()
 
 	c.Header("X-Redirect", "Login")

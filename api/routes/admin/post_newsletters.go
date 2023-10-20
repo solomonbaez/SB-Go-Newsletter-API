@@ -46,7 +46,7 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 	var e error
 
 	session := sessions.Default(c)
-	id := fmt.Sprintf("%v", session.Get("user"))
+	id := fmt.Sprintf("%v", session.Get("id"))
 
 	requestID := c.GetString("requestID")
 	key, _ := c.GetPostForm("idempotency_key")
