@@ -29,6 +29,7 @@ func TestAdmin(t *testing.T) {
 		{"GetLogout", getLogout},
 	}
 
+	t.Parallel()
 	for _, test := range tests {
 		t.Run(test.name, test.fn)
 	}
