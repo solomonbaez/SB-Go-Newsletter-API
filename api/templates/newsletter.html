@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE<!DOCTYPE html>
 <html>
     <head>
         <meta charset="utf-8">
@@ -8,44 +8,70 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body {
+                font-family: Arial, sans-serif;
                 margin: 0;
-                text-align: center;
-                font-family: "Merriweather", serif;
-                background-color: #111;
-                color: #fff;
-            }
-
-            section {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            }
-
-            .form_container {
-                margin: 50px;
+                background-color: #000000;
                 display: flex;
                 flex-direction: column;
+                align-items: center;
             }
-
+            .top-banner {
+                background-color: #333;
+                width: 100%;
+                padding: 10px 0;
+                text-align: center;
+            }
+            .form-container {
+                display: flex;
+                flex-direction: column;
+                width: 80%; /* Adjust the width as needed */
+                padding: 20px;
+                text-align: center;
+            }
+            p, h1 {
+                color: blanchedalmond;
+            }
+            a {
+                color: blanchedalmond;
+                text-decoration: none;
+            }
+            a:hover {
+                text-decoration: underline;
+            }
             label {
                 color: blanchedalmond;
+                display: block;
             }
-            p {
-                color: blanchedalmond;
-            }
-            text {
+            textarea {
                 background-color: blanchedalmond;
+                width: 50%; /* Take up 50% of the screen width */
+                border: none; /* Remove border */
+                resize: none; /* Prevent resizing */
+                outline: none;
+            }
+            button[type="submit"], button[type="button"] {
+                background-color: #333; /* Background color for the button */
+                color: blanchedalmond;
+                border: none;
+                padding: 10px;
+                cursor: pointer;
+                transition: background-color 0.3s; /* Add a transition effect */
+            }
+            button[type="submit"]:hover, button[type="button"]:hover {
+                background-color: #555; /* Change background color on hover */
             }
         </style>
     </head>
     <body>
-        {{if .flashes}}
-            <section>
-                <p>Error: {{.flashes}}</p>
-            </section>
-        {{end}}
+        <div class="top-banner">
+            {{if .flashes}}
+                <section>
+                    <p>Error: {{.flashes}}</p>
+                </section>
+            {{end}}
+        </div>
 
-        <div class="form_container">
+        <div class="form-container">
             <form action="/admin/newsletter" method="post">
                 <label>Title
                     <input
@@ -56,23 +82,24 @@
                 </label>
 
                 <label>Text
-                    <input
-                        type="text"
-                        placeholder="Enter newsletter body" 
+                    <textarea
+                        rows="10"
+                        placeholder="Enter newsletter body"
                         name="text"
-                    >
+                    ></textarea>
                 </label>
 
                 <label>Html
-                    <input
-                        type="text"
+                    <textarea
+                        rows="10"
                         placeholder="Enter newsletter body with html styling"
                         name="html"
-                    >
+                    ></textarea>
                 </label>
 
                 <input hidden type="text" name="idempotency_key" value="{{.idempotency_key}}">
                 <button type="submit">Publish</button>
+                <button type="button"><a href="/admin/dashboard">Back</a></button>
             </form>
         </div>
     </body>
