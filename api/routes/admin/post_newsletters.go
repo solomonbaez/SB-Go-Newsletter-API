@@ -39,7 +39,7 @@ func InsertNewsletter(c *gin.Context, tx pgx.Tx, content *models.Body) (*string,
 	return &id, e
 }
 
-func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients.EmailClient) {
+func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) {
 	var newsletter models.Newsletter
 	var body models.Body
 	var response string
@@ -101,8 +101,9 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client clients
 			return
 		}
 
+		c.Header("X-Redirect", "Newsletter")
 		c.Redirect(http.StatusSeeOther, "dashboard")
-	} else {
+	} else if transaction.SavedResponse != nil {
 		log.Info().
 			Str("requestID", requestID).
 			Str("id", id).
