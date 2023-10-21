@@ -32,8 +32,8 @@ func WorkerLoop(c context.Context, dh *handlers.DatabaseHandler, client *clients
 				Msg("Empty queue")
 			time.Sleep(10 * time.Second)
 		case ExecutionOutcomeError:
-			log.Info().
-				Msg("Error")
+			log.Error().
+				Msg("Failed to complete task")
 			time.Sleep(1 * time.Second)
 		case ExecutionOutcomeTaskCompleted:
 			log.Info().

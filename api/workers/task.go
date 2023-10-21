@@ -23,18 +23,12 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 
 		task, tx, e := DequeTask(c, dh)
 		if e != nil {
-			log.Error().
-				Err(e).
-				Msg("Deque Task")
 			resultChan <- ExecutionOutcomeEmptyQueue
 			return
 		}
 
 		content, e := GetIssue(c, tx, task.NewsletterIssueID)
 		if e != nil {
-			log.Error().
-				Err(e).
-				Msg("Get Issue")
 			resultChan <- ExecutionOutcomeError
 			return
 		}
@@ -43,32 +37,20 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 		var newsletter models.Newsletter
 		newsletter.Recipient, e = models.ParseEmail(task.SubscriberEmail.String())
 		if e != nil {
-			log.Error().
-				Err(e).
-				Msg("Parse Email")
 			resultChan <- ExecutionOutcomeError
 			return
 		}
 		newsletter.Content = content
 		if e = models.ParseNewsletter(&newsletter); e != nil {
-			log.Error().
-				Err(e).
-				Msg("Parse Newsletter")
 			resultChan <- ExecutionOutcomeError
 			return
 		}
 		if e = client.SendEmail(&newsletter); e != nil {
-			log.Error().
-				Err(e).
-				Msg("Send Email")
 			resultChan <- ExecutionOutcomeError
 			return
 		}
 
 		if e = DeleteTask(c, tx, task); e != nil {
-			log.Error().
-				Err(e).
-				Msg("Delete")
 			resultChan <- ExecutionOutcomeError
 			return
 		}
