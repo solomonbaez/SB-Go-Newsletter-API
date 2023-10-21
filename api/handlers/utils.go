@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"math/big"
 	"net/http"
 	"strings"
@@ -24,10 +25,9 @@ func StoreToken(c context.Context, tx pgx.Tx, id string, token string) (e error)
 	query := "INSERT INTO subscription_tokens (subscription_token, subscriber_id) VALUES ($1, $2)"
 	_, e = tx.Exec(c, query, token, id)
 	if e != nil {
-		return e
+		return fmt.Errorf("database error: %w", e)
 	}
 
-	// commit changes
 	tx.Commit(c)
 	return nil
 }
@@ -40,7 +40,7 @@ func GenerateCSPRNG(tokenLen int) (csprng string, e error) {
 	for i := range b {
 		r, e = rand.Int(rand.Reader, maxIndex)
 		if e != nil {
-			return "", e
+			return "", fmt.Errorf("failed to generate csprng: %w", e)
 		}
 
 		b[i] = charset[r.Int64()]
@@ -58,7 +58,7 @@ func BuildSubscriber(row pgx.CollectableRow) (subscriber *models.Subscriber, e e
 	var status string
 
 	if e = row.Scan(&id, &email, &name, &created, &status); e != nil {
-		return nil, e
+		return nil, fmt.Errorf("database error: %w", e)
 	}
 
 	subscriber = &models.Subscriber{

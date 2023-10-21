@@ -30,7 +30,7 @@ func ValidateCredentials(c context.Context, dh *handlers.DatabaseHandler, creden
 
 		log.Error().
 			Err(e).
-			Msg("Invalid username")
+			Msg("invalid username")
 
 		// prevent timing attacks!
 		passwordHash = models.BaseHash

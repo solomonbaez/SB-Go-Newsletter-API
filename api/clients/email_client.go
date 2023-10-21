@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/go-gomail/gomail"
-	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 )
@@ -21,7 +20,7 @@ type SMTPClient struct {
 	Sender       models.SubscriberEmail
 }
 
-func NewSMTPClient(cfgFile *string) (*SMTPClient, error) {
+func NewSMTPClient(cfgFile *string) (client *SMTPClient, err error) {
 	var file string
 	if *cfgFile != "" {
 		if *cfgFile != "test" {
@@ -44,18 +43,18 @@ func NewSMTPClient(cfgFile *string) (*SMTPClient, error) {
 		return nil, e
 	}
 
-	client := &SMTPClient{
-		cfg.Server,
-		cfg.Port,
-		cfg.Username,
-		cfg.Password,
-		sender,
+	client = &SMTPClient{
+		SmtpServer:   cfg.Server,
+		SmtpPort:     cfg.Port,
+		smtpUsername: cfg.Username,
+		smtpPassword: cfg.Password,
+		Sender:       sender,
 	}
 
 	return client, nil
 }
 
-func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) (e error) {
+func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) (err error) {
 	m := gomail.NewMessage()
 	m.SetHeader("From", client.Sender.String())
 	m.SetHeader("To", newsletter.Recipient.String())
@@ -64,12 +63,8 @@ func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) (e error) {
 	m.AddAlternative("text/html", newsletter.Content.Html)
 
 	dialer := gomail.NewDialer(client.SmtpServer, client.SmtpPort, client.smtpUsername, client.smtpPassword)
-	if e = dialer.DialAndSend(m); e != nil {
-		log.Error().
-			Err(e).
-			Msg("Failed to send email")
-
-		return e
+	if e := dialer.DialAndSend(m); e != nil {
+		return fmt.Errorf("failed to send email: %w", e)
 	}
 
 	return nil
