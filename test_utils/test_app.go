@@ -1,4 +1,4 @@
-package api_test
+package utils
 
 import (
 	"net/http"
@@ -14,21 +14,21 @@ import (
 )
 
 type App struct {
-	recorder *httptest.ResponseRecorder
-	context  *gin.Context
-	router   *gin.Engine
-	database pgxmock.PgxConnIface
-	dh       *handlers.DatabaseHandler
-	client   *clients.SMTPClient
+	Recorder *httptest.ResponseRecorder
+	Context  *gin.Context
+	Router   *gin.Engine
+	Database pgxmock.PgxConnIface
+	DH       *handlers.DatabaseHandler
+	Client   *clients.SMTPClient
 }
 
-func new_mock_database() (database pgxmock.PgxConnIface) {
+func newMockDatabase() (database pgxmock.PgxConnIface) {
 	database, _ = pgxmock.NewConn()
 
 	return database
 }
 
-func new_mock_client() (client *clients.SMTPClient) {
+func newMockClient() (client *clients.SMTPClient) {
 	cfg := "test"
 	client, _ = clients.NewSMTPClient(&cfg)
 
@@ -37,7 +37,7 @@ func new_mock_client() (client *clients.SMTPClient) {
 
 var admin *gin.RouterGroup
 
-func new_mock_app() App {
+func NewMockApp() App {
 	var recorder *httptest.ResponseRecorder
 	var context *gin.Context
 	var database pgxmock.PgxConnIface
@@ -46,8 +46,8 @@ func new_mock_app() App {
 	var store cookie.Store
 
 	recorder = httptest.NewRecorder()
-	database = new_mock_database()
-	client = new_mock_client()
+	database = newMockDatabase()
+	client = newMockClient()
 	dh = handlers.NewDatabaseHandler(database)
 
 	router := gin.Default()
@@ -58,15 +58,15 @@ func new_mock_app() App {
 	router.Use(sessions.Sessions("test", store))
 
 	return App{
-		recorder: recorder,
-		context:  context,
-		router:   router,
-		database: database,
-		dh:       dh,
-		client:   client,
+		Recorder: recorder,
+		Context:  context,
+		Router:   router,
+		Database: database,
+		DH:       dh,
+		Client:   client,
 	}
 }
 
-func (app *App) new_mock_request(request *http.Request) {
-	app.router.ServeHTTP(app.recorder, request)
+func (app *App) NewMockRequest(request *http.Request) {
+	app.Router.ServeHTTP(app.Recorder, request)
 }

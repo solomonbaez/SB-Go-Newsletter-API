@@ -17,6 +17,7 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
 	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
+	utils "github.com/solomonbaez/SB-Go-Newsletter-API/test_utils"
 )
 
 func TestAPI(t *testing.T) {
@@ -49,23 +50,20 @@ func healthCheck(t *testing.T) {
 
 	t.Parallel()
 	// initialize
-	app := new_mock_app()
-	app.router.GET("/health", handlers.HealthCheck)
-	defer app.database.Close(app.context)
+	app := utils.NewMockApp()
+	app.Router.GET("/health", handlers.HealthCheck)
+	defer app.Database.Close(app.Context)
 
-	request, e := http.NewRequest("GET", "/health", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
+	request, _ := http.NewRequest("GET", "/health", nil)
 
 	// assertions
-	app.new_mock_request(request)
-	if responseStatus := app.recorder.Code; responseStatus != test.expectedStatus {
+	app.NewMockRequest(request)
+	if responseStatus := app.Recorder.Code; responseStatus != test.expectedStatus {
 		t.Errorf("Expected status code %v, but got %v", http.StatusOK, responseStatus)
 	}
 
 	expected_body := `"OK"`
-	response_body := app.recorder.Body.String()
+	response_body := app.Recorder.Body.String()
 	if response_body != expected_body {
 		t.Errorf("Expected body %v, but got %v", expected_body, response_body)
 	}
@@ -115,18 +113,15 @@ func getSubscribers(t *testing.T) {
 	t.Parallel()
 	for _, tc := range *testCases {
 		// initialize
-		app := new_mock_app()
-		admin = app.router.Group("/admin")
-		admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, app.dh) })
-		defer app.database.Close(app.context)
+		app := utils.NewMockApp()
+		admin := app.Router.Group("/admin")
+		admin.GET("/subscribers", func(c *gin.Context) { adminRoutes.GetSubscribers(c, app.DH) })
+		defer app.Database.Close(app.Context)
 
-		request, e := http.NewRequest("GET", "/admin/subscribers", nil)
-		if e != nil {
-			t.Fatal(e)
-		}
+		request, _ := http.NewRequest("GET", "/admin/subscribers", nil)
 
 		if tc.subscribers {
-			app.database.ExpectQuery(`SELECT \* FROM subscriptions`).
+			app.Database.ExpectQuery(`SELECT \* FROM subscriptions`).
 				WillReturnRows(
 					pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
 						AddRow(
@@ -138,21 +133,21 @@ func getSubscribers(t *testing.T) {
 						),
 				)
 		} else {
-			app.database.ExpectQuery(`SELECT \* FROM subscriptions`).
+			app.Database.ExpectQuery(`SELECT \* FROM subscriptions`).
 				WillReturnRows(
 					pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}),
 				)
 		}
 
-		app.new_mock_request(request)
-		defer app.database.ExpectationsWereMet()
+		app.NewMockRequest(request)
+		defer app.Database.ExpectationsWereMet()
 
 		// tests
-		if responseStatus := app.recorder.Code; responseStatus != tc.expectedStatus {
+		if responseStatus := app.Recorder.Code; responseStatus != tc.expectedStatus {
 			t.Errorf("Expected status code %v, but got %v", tc.expectedStatus, responseStatus)
 		}
 
-		responseBody := app.recorder.Body.String()
+		responseBody := app.Recorder.Body.String()
 		if responseBody != tc.expectedBody {
 			t.Errorf("Expected body %v, but got %v", tc.expectedBody, responseBody)
 		}
@@ -191,10 +186,10 @@ func getConfirmedSubscribers(t *testing.T) {
 
 	t.Parallel()
 	// initialize
-	app := new_mock_app()
-	defer app.database.Close(app.context)
+	app := utils.NewMockApp()
+	defer app.Database.Close(app.Context)
 
-	app.database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
+	app.Database.ExpectQuery(`SELECT id, email, name, created, status FROM subscriptions WHERE`).
 		WithArgs(seedSubscriber.status).
 		WillReturnRows(
 			pgxmock.NewRows([]string{"id", "email", "name", "created", "status"}).
@@ -207,8 +202,8 @@ func getConfirmedSubscribers(t *testing.T) {
 				),
 		)
 
-	responseArray := adminRoutes.GetConfirmedSubscribers(app.context, app.dh)
-	defer app.database.ExpectationsWereMet()
+	responseArray := adminRoutes.GetConfirmedSubscribers(app.Context, app.DH)
+	defer app.Database.ExpectationsWereMet()
 
 	if *responseArray[0] != *test.expectedArray[0] {
 		t.Errorf("Expected array: %v, got: %v", *test.expectedArray[0], *responseArray[0])
@@ -259,17 +254,14 @@ func getSubscribersByID(t *testing.T) {
 	t.Parallel()
 	for _, tc := range *testCases {
 		// initialization
-		app := new_mock_app()
-		admin = app.router.Group("/admin")
-		admin.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, app.dh) })
-		defer app.database.Close(app.context)
+		app := utils.NewMockApp()
+		admin := app.Router.Group("/admin")
+		admin.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, app.DH) })
+		defer app.Database.Close(app.Context)
 
-		request, e := http.NewRequest("GET", fmt.Sprintf("/admin/subscribers/%v", seedSubscriber.id), nil)
-		if e != nil {
-			t.Fatal(e)
-		}
+		request, _ := http.NewRequest("GET", fmt.Sprintf("/admin/subscribers/%v", seedSubscriber.id), nil)
 
-		query := app.database.ExpectQuery(`SELECT id, email, name, status FROM subscriptions WHERE`).
+		query := app.Database.ExpectQuery(`SELECT id, email, name, status FROM subscriptions WHERE`).
 			WithArgs(pgxmock.AnyArg())
 		if tc.validID {
 			query.WillReturnRows(
@@ -286,14 +278,14 @@ func getSubscribersByID(t *testing.T) {
 		}
 
 		// tests
-		app.new_mock_request(request)
-		defer app.database.ExpectationsWereMet()
+		app.NewMockRequest(request)
+		defer app.Database.ExpectationsWereMet()
 
-		if responseStatus := app.recorder.Code; responseStatus != tc.expectedStatus {
+		if responseStatus := app.Recorder.Code; responseStatus != tc.expectedStatus {
 			t.Errorf("Expected status code %v, but got %v", tc.expectedStatus, responseStatus)
 		}
 
-		responseBody := app.recorder.Body.String()
+		responseBody := app.Recorder.Body.String()
 		if responseBody != tc.expectedBody {
 			t.Errorf("Expected body %v, but got %v", tc.expectedBody, responseBody)
 		}
@@ -372,28 +364,28 @@ func postSubscribe(t *testing.T) {
 
 		for _, d := range tc.data {
 			// initialization
-			app := new_mock_app()
-			app.router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, app.dh, app.client) })
+			app := utils.NewMockApp()
+			app.Router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, app.DH, app.Client) })
 			request, _ := http.NewRequest("POST", "/subscribe", strings.NewReader(d))
 
-			app.database.ExpectBegin()
-			app.database.ExpectExec("INSERT INTO subscriptions").
+			app.Database.ExpectBegin()
+			app.Database.ExpectExec("INSERT INTO subscriptions").
 				WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 				WillReturnResult(pgxmock.NewResult("INSERT", 1))
-			app.database.ExpectExec("INSERT INTO subscription_tokens").
+			app.Database.ExpectExec("INSERT INTO subscription_tokens").
 				WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 				WillReturnResult(pgxmock.NewResult("INSERT", 1))
-			app.database.ExpectCommit()
+			app.Database.ExpectCommit()
 
-			app.new_mock_request(request)
+			app.NewMockRequest(request)
 
 			// tests
-			if responseStatus := app.recorder.Code; responseStatus != tc.expectedStatus {
+			if responseStatus := app.Recorder.Code; responseStatus != tc.expectedStatus {
 				t.Errorf("Expected status code %v, but got %v", tc.expectedStatus, responseStatus)
 			}
 
-			app.database.ExpectationsWereMet()
-			app.database.Close(app.context)
+			app.Database.ExpectationsWereMet()
+			app.Database.Close(app.Context)
 		}
 	}
 }
@@ -429,13 +421,13 @@ func confirmSubscriber(t *testing.T) {
 
 	for _, tc := range *testCases {
 		// initialize
-		app := new_mock_app()
-		app.router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, app.dh) })
-		defer app.database.Close(app.context)
+		app := utils.NewMockApp()
+		app.Router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, app.DH) })
+		defer app.Database.Close(app.Context)
 
 		request, _ := http.NewRequest("GET", fmt.Sprintf("/confirm/%s", tc.token), nil)
 
-		query := app.database.ExpectQuery(`SELECT subscriber_id FROM subscription_tokens WHERE`).
+		query := app.Database.ExpectQuery(`SELECT subscriber_id FROM subscription_tokens WHERE`).
 			WithArgs(pgxmock.AnyArg())
 		if tc.token == seedSubscriber.token {
 			query.WillReturnRows(
@@ -446,19 +438,19 @@ func confirmSubscriber(t *testing.T) {
 			query.WillReturnError(errors.New("invalid token"))
 		}
 
-		app.database.ExpectExec(`UPDATE subscriptions SET status = 'confirmed' WHERE`).
+		app.Database.ExpectExec(`UPDATE subscriptions SET status = 'confirmed' WHERE`).
 			WithArgs(pgxmock.AnyArg()).
 			WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-		app.new_mock_request(request)
-		defer app.database.ExpectationsWereMet()
+		app.NewMockRequest(request)
+		defer app.Database.ExpectationsWereMet()
 
 		// tests
-		if responseStatus := app.recorder.Code; responseStatus != tc.expectedStatus {
+		if responseStatus := app.Recorder.Code; responseStatus != tc.expectedStatus {
 			t.Errorf("Expected status code %v, but got %v", tc.expectedStatus, responseStatus)
 		}
 
-		responseBody := app.recorder.Body.String()
+		responseBody := app.Recorder.Body.String()
 		if responseBody != tc.expectedBody {
 			t.Errorf("Expected body %v, but got %v", tc.expectedBody, responseBody)
 		}

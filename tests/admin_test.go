@@ -14,6 +14,7 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
 	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
+	utils "github.com/solomonbaez/SB-Go-Newsletter-API/test_utils"
 )
 
 func TestAdmin(t *testing.T) {
@@ -46,20 +47,17 @@ func getLogin(t *testing.T) {
 
 	t.Parallel()
 	// initialize
-	app := new_mock_app()
-	app.router.GET("/login", routes.GetLogin)
-	defer app.database.Close(app.context)
+	app := utils.NewMockApp()
+	app.Router.GET("/login", routes.GetLogin)
+	defer app.Database.Close(app.Context)
 
-	request, e := http.NewRequest("GET", "/login", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
+	request, _ := http.NewRequest("GET", "/login", nil)
 
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
+	app.NewMockRequest(request)
+	defer app.Database.ExpectationsWereMet()
 
 	// tests
-	if returnedStatus := app.recorder.Code; returnedStatus != test.expectedStatus {
+	if returnedStatus := app.Recorder.Code; returnedStatus != test.expectedStatus {
 		t.Errorf("Expected status code %v, but got %v", test.expectedStatus, returnedStatus)
 	}
 }
@@ -111,12 +109,12 @@ func postLogin(t *testing.T) {
 
 	// parallelize tests
 	t.Parallel()
-	var app App
+	var app utils.App
 	for _, tc := range *testCases {
 		// initialize
-		app = new_mock_app()
-		app.router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, app.dh) })
-		defer app.database.Close(app.context)
+		app = utils.NewMockApp()
+		app.Router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, app.DH) })
+		defer app.Database.Close(app.Context)
 
 		// Create a URL-encoded form data string
 		data := &url.Values{}
@@ -124,13 +122,10 @@ func postLogin(t *testing.T) {
 		data.Set("password", tc.password)
 		form_data := data.Encode()
 
-		request, e := http.NewRequest("POST", "/login", strings.NewReader(form_data))
-		if e != nil {
-			t.Fatal(e)
-		}
+		request, _ := http.NewRequest("POST", "/login", strings.NewReader(form_data))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-		query := app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
+		query := app.Database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
 			WithArgs(tc.username)
 		if tc.username == seedCredentials.username {
 			query.WillReturnRows(
@@ -141,15 +136,15 @@ func postLogin(t *testing.T) {
 			query.WillReturnError(errors.New("Failed to validate credentials"))
 		}
 
-		app.new_mock_request(request)
-		defer app.database.ExpectationsWereMet()
+		app.NewMockRequest(request)
+		defer app.Database.ExpectationsWereMet()
 
 		// conditions
-		if returnedStatus := app.recorder.Code; returnedStatus != tc.expectedStatus {
+		if returnedStatus := app.Recorder.Code; returnedStatus != tc.expectedStatus {
 			t.Errorf("Expected status code %v, but got %v", tc.expectedStatus, returnedStatus)
 		}
 
-		returnedHeader := app.recorder.Header().Get("X-Redirect")
+		returnedHeader := app.Recorder.Header().Get("X-Redirect")
 		if returnedHeader != tc.expectedHeader {
 			t.Errorf("Expected header %s, but got %s", tc.expectedHeader, returnedHeader)
 		}
@@ -167,23 +162,20 @@ func getAdminDashboard(t *testing.T) {
 
 	t.Parallel()
 	// initialize
-	app := new_mock_app()
-	admin = app.router.Group("/admin")
+	app := utils.NewMockApp()
+	admin := app.Router.Group("/admin")
 	admin.GET("/dashboard", adminRoutes.GetAdminDashboard)
-	defer app.database.Close(app.context)
+	defer app.Database.Close(app.Context)
 
 	// this is not a precise mock of the behvior due to param injection
 	// but the end-to-end behavior is exact
-	request, e := http.NewRequest("GET", "/admin/dashboard", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
+	request, _ := http.NewRequest("GET", "/admin/dashboard", nil)
 
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
+	app.NewMockRequest(request)
+	defer app.Database.ExpectationsWereMet()
 
 	// tests
-	if returnedStatus := app.recorder.Code; returnedStatus != test.expectedStatus {
+	if returnedStatus := app.Recorder.Code; returnedStatus != test.expectedStatus {
 		t.Errorf("Expected status code %v, but got %v", test.expectedStatus, returnedStatus)
 	}
 }
@@ -199,21 +191,18 @@ func getChangePassword(t *testing.T) {
 
 	t.Parallel()
 	// initialize
-	app := new_mock_app()
-	admin = app.router.Group("/admin")
+	app := utils.NewMockApp()
+	admin := app.Router.Group("/admin")
 	admin.GET("/password", adminRoutes.GetChangePassword)
-	defer app.database.Close(app.context)
+	defer app.Database.Close(app.Context)
 
-	request, e := http.NewRequest("GET", "/admin/password", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
+	request, _ := http.NewRequest("GET", "/admin/password", nil)
 
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
+	app.NewMockRequest(request)
+	defer app.Database.ExpectationsWereMet()
 
 	// tests
-	if returnedStatus := app.recorder.Code; returnedStatus != test.expectedStatus {
+	if returnedStatus := app.Recorder.Code; returnedStatus != test.expectedStatus {
 		t.Errorf("Expected status code %v, but got %v", test.expectedStatus, returnedStatus)
 	}
 }
@@ -299,14 +288,14 @@ func postChangePassword(t *testing.T) {
 
 	// parallelize tests
 	t.Parallel()
-	var app App
+	var app utils.App
 	for _, tc := range *testCases {
 		// initialize
-		app = new_mock_app()
-		defer app.database.Close(app.context)
+		app = utils.NewMockApp()
+		defer app.Database.Close(app.Context)
 
-		admin = app.router.Group("/admin")
-		admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, app.dh) })
+		admin := app.Router.Group("/admin")
+		admin.POST("/password", func(c *gin.Context) { adminRoutes.PostChangePassword(c, app.DH) })
 
 		// Create a URL-encoded form data string
 		data := url.Values{}
@@ -316,13 +305,11 @@ func postChangePassword(t *testing.T) {
 		form_data := data.Encode()
 
 		// Create a POST request with the form data
-		request, e := http.NewRequest("POST", "/admin/password", strings.NewReader(form_data))
-		if e != nil {
-			t.Fatal(e)
-		}
+		request, _ := http.NewRequest("POST", "/admin/password", strings.NewReader(form_data))
+
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-		query := app.database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
+		query := app.Database.ExpectQuery(`SELECT id, password_hash FROM users WHERE`).
 			WithArgs(pgxmock.AnyArg())
 		if tc.username == seedCredentials.username {
 			query.WillReturnRows(
@@ -333,18 +320,18 @@ func postChangePassword(t *testing.T) {
 			query.WillReturnError(errors.New("Invalid credentials"))
 		}
 
-		app.database.ExpectExec(`UPDATE users SET`).
+		app.Database.ExpectExec(`UPDATE users SET`).
 			WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 			WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-		app.new_mock_request(request)
-		defer app.database.ExpectationsWereMet()
+		app.NewMockRequest(request)
+		defer app.Database.ExpectationsWereMet()
 
 		// tests
-		if responseStatus := app.recorder.Code; responseStatus != tc.expectedStatus {
+		if responseStatus := app.Recorder.Code; responseStatus != tc.expectedStatus {
 			t.Errorf("Expected status code %v, but got %v", tc.expectedStatus, responseStatus)
 		}
-		responseHeader := app.recorder.Header().Get("X-Redirect")
+		responseHeader := app.Recorder.Header().Get("X-Redirect")
 		if responseHeader != tc.expectedHeader {
 			t.Errorf("Expected header %s, but got %s", tc.expectedHeader, responseHeader)
 		}
@@ -364,25 +351,22 @@ func getLogout(t *testing.T) {
 
 	t.Parallel()
 	// initialize
-	app := new_mock_app()
-	admin = app.router.Group("/admin")
+	app := utils.NewMockApp()
+	admin := app.Router.Group("/admin")
 	admin.GET("/logout", adminRoutes.Logout)
-	defer app.database.Close(app.context)
+	defer app.Database.Close(app.Context)
 
-	request, e := http.NewRequest("GET", "/admin/logout", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
+	request, _ := http.NewRequest("GET", "/admin/logout", nil)
 
-	app.new_mock_request(request)
-	defer app.database.ExpectationsWereMet()
+	app.NewMockRequest(request)
+	defer app.Database.ExpectationsWereMet()
 
 	// tests
-	if responseStatus := app.recorder.Code; responseStatus != test.expectedStatus {
+	if responseStatus := app.Recorder.Code; responseStatus != test.expectedStatus {
 		t.Errorf("Expected status code %v, but got %v", test.expectedStatus, responseStatus)
 	}
 
-	responseHeader := app.recorder.Header().Get("X-Redirect")
+	responseHeader := app.Recorder.Header().Get("X-Redirect")
 	if responseHeader != test.expectedHeader {
 		t.Errorf("Expected header %s, but got %s", test.expectedHeader, responseHeader)
 	}
