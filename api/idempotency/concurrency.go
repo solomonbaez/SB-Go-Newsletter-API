@@ -17,7 +17,7 @@ type NextAction struct {
 }
 
 func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key string) (next *NextAction, err error) {
-	nextAction := &NextAction{StartProcessing: nil, SavedResponse: nil}
+	next = &NextAction{StartProcessing: nil, SavedResponse: nil}
 
 	tx, e := dh.DB.Begin(c)
 	if e != nil {
@@ -50,7 +50,7 @@ func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key stri
 	}
 
 	if idempotencyRows.RowsAffected() > 0 && headerRows.RowsAffected() > 0 {
-		nextAction.StartProcessing = tx
+		next.StartProcessing = tx
 		return
 	}
 
@@ -65,6 +65,6 @@ func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key stri
 		return
 	}
 
-	nextAction.SavedResponse = savedResponse
+	next.SavedResponse = savedResponse
 	return
 }

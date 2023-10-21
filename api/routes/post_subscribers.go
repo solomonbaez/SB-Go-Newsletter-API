@@ -105,7 +105,6 @@ func insertSubscriber(c context.Context, client *clients.SMTPClient, tx pgx.Tx, 
 
 	if client.SmtpServer != "test" {
 		confirmation.Recipient = subscriber.Email
-
 		confirmationLink = fmt.Sprintf("%v/confirm/%v", handlers.BaseURL, token)
 		confirmation.Content = &models.Body{
 			Title: "Please confirm your subscription",

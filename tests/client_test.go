@@ -20,16 +20,19 @@ func TestMockEmail_ValidEmail_Passes(t *testing.T) {
 
 	client := mockClient
 	client.SmtpPort = port
-	client.Sender = models.SubscriberEmail("user@test.com")
-	fmt.Printf("%v", client)
+
+	sender := models.SubscriberEmail("user@example.com")
+	client.Sender = &sender
 
 	body := models.Body{
 		Title: "testing",
 		Text:  "testing",
 		Html:  "<p>testing</p>",
 	}
+
+	recipient := models.SubscriberEmail("test@example.com")
 	emailContent := models.Newsletter{
-		Recipient: models.SubscriberEmail("test@test.com"),
+		Recipient: recipient,
 		Content:   &body,
 	}
 
@@ -48,8 +51,9 @@ func TestMockEmail_NoRecipient_Fails(t *testing.T) {
 
 	client := mockClient
 	client.SmtpPort = port
-	client.Sender = models.SubscriberEmail("user@test.com")
-	fmt.Printf("%v", client)
+
+	sender := models.SubscriberEmail("user@example.com")
+	client.Sender = &sender
 
 	body := models.Body{
 		Title: "testing",
@@ -61,7 +65,7 @@ func TestMockEmail_NoRecipient_Fails(t *testing.T) {
 	}
 
 	if e := client.SendEmail(&emailContent); e == nil {
-		t.Errorf("Failed to invalid filter email")
+		t.Errorf("Failed to filter invalid email")
 		return
 	}
 }
@@ -75,16 +79,19 @@ func TestMockEmail_InvalidRecipient_Fails(t *testing.T) {
 
 	client := mockClient
 	client.SmtpPort = port
-	client.Sender = models.SubscriberEmail("user@test.com")
-	fmt.Printf("%v", client)
+
+	sender := models.SubscriberEmail("user@example.com")
+	client.Sender = &sender
 
 	body := models.Body{
 		Title: "testing",
 		Text:  "testing",
 		Html:  "<p>testing</p>",
 	}
+
+	recipient := models.SubscriberEmail("example.com")
 	emailContent := models.Newsletter{
-		Recipient: models.SubscriberEmail("test.com"),
+		Recipient: recipient,
 		Content:   &body,
 	}
 
@@ -103,7 +110,8 @@ func TestMockEmail_InvalidBody_Fails(t *testing.T) {
 
 	client := mockClient
 	client.SmtpPort = port
-	client.Sender = models.SubscriberEmail("user@test.com")
+	sender := models.SubscriberEmail("user@example.com")
+	client.Sender = &sender
 	fmt.Printf("%v", client)
 
 	testCases := []models.Body{
@@ -124,9 +132,10 @@ func TestMockEmail_InvalidBody_Fails(t *testing.T) {
 		},
 	}
 
+	recipient := models.SubscriberEmail("test@example.com")
 	for _, tc := range testCases {
 		emailContent := models.Newsletter{
-			Recipient: models.SubscriberEmail("test.com"),
+			Recipient: recipient,
 			Content:   &tc,
 		}
 

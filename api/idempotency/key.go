@@ -10,15 +10,14 @@ const keyLen = 25
 
 type IdempotencyKey string
 
-func GenerateIdempotencyKey() (key *IdempotencyKey, err error) {
+func GenerateIdempotencyKey() (key IdempotencyKey, err error) {
 	k, e := handlers.GenerateCSPRNG(keyLen)
 	if e != nil {
 		err = fmt.Errorf("failed to generate csprng: %w", e)
 		return
 	}
 
-	idempotencyKey := IdempotencyKey(k)
-	key = &idempotencyKey
+	key = IdempotencyKey(k)
 	return
 }
 

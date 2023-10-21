@@ -27,12 +27,6 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 			return
 		}
 
-		content, e := GetIssue(c, tx, task.NewsletterIssueID)
-		if e != nil {
-			resultChan <- ExecutionOutcomeError
-			return
-		}
-
 		// re-parse email to ensure data integrity
 		var newsletter models.Newsletter
 		newsletter.Recipient, e = models.ParseEmail(task.SubscriberEmail.String())
@@ -40,7 +34,13 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 			resultChan <- ExecutionOutcomeError
 			return
 		}
-		newsletter.Content = content
+
+		newsletter.Content, e = GetIssue(c, tx, task.NewsletterIssueID)
+		if e != nil {
+			resultChan <- ExecutionOutcomeError
+			return
+		}
+
 		if e = models.ParseNewsletter(&newsletter); e != nil {
 			resultChan <- ExecutionOutcomeError
 			return

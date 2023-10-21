@@ -39,90 +39,93 @@ var params = hashParams{
 var BaseHash string
 
 func init() {
-	r := uuid.NewString()
-	BaseHash, _ = GeneratePHC(r)
+	randomKey := uuid.NewString()
+	BaseHash, _ = GeneratePHC(randomKey)
 }
 
-func ValidatePHC(password string, phc string) error {
+func ValidatePHC(password string, phc string) (err error) {
 	p, s, h, e := DecodePHC(phc)
 	if e != nil {
-		return e
+		err = fmt.Errorf("failed to decode PHC: %w", e)
+		return
 	}
 
 	k := argon2.IDKey([]byte(password), s, p.iterations, p.memory, p.threads, p.keyLen)
-
 	// ctc to protect against timing attacks
 	if subtle.ConstantTimeCompare(h, k) != 1 {
-		e = errors.New("PHC are not equivalent")
-		return e
+		err = errors.New("PHC are not equivalent")
+		return
 	}
 
-	return nil
+	return
 }
 
-func GeneratePHC(password string) (string, error) {
+func GeneratePHC(password string) (phc string, err error) {
 	salt, e := GenerateSalt(params.saltLen)
 	if e != nil {
-		return "", e
+		err = fmt.Errorf("failed to generate PHC salt: %w", e)
+		return
 	}
 
 	hash := argon2.IDKey([]byte(password), salt, params.iterations, params.memory, params.threads, params.keyLen)
-
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
 
-	encodedHash := fmt.Sprintf(
+	phc = fmt.Sprintf(
 		"$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version, params.memory, params.iterations, params.threads, b64Salt, b64Hash,
 	)
 
-	return encodedHash, nil
+	return
 }
 
-func DecodePHC(phc string) (p *hashParams, s, h []byte, e error) {
+func DecodePHC(phc string) (p *hashParams, s, h []byte, err error) {
 	values := strings.Split(phc, "$")
 	if len(values) != 6 {
-		e = errors.New("invalid PHC")
-		return nil, nil, nil, e
+		err = errors.New("invalid PHC format")
+		return
 	}
 
 	var version int
-	_, e = fmt.Sscanf(values[2], "v=%d", &version)
+	_, e := fmt.Sscanf(values[2], "v=%d", &version)
 	if e != nil {
-		return nil, nil, nil, e
+		err = fmt.Errorf("invalid PHC version: %w", e)
+		return
 	}
 	if version != argon2.Version {
-		e = errors.New("invalid version")
-		return nil, nil, nil, e
+		err = errors.New("incorrect PHC version")
+		return
 	}
 
 	p = &hashParams{}
 	_, e = fmt.Sscanf(values[3], "m=%d,t=%d,p=%d", &p.memory, &p.iterations, &p.threads)
 	if e != nil {
-		e = errors.New("invalid parameters")
-		return nil, nil, nil, e
+		err = errors.New("invalid PHC hash parameters")
+		return
 	}
 
 	s, e = base64.RawStdEncoding.Strict().DecodeString(values[4])
 	if e != nil {
-		return nil, nil, nil, e
+		err = fmt.Errorf("failed to decode PHC salt: %w", e)
+		return
 	}
 	p.saltLen = uint32(len(s))
-
 	h, e = base64.RawStdEncoding.Strict().DecodeString(values[5])
 	if e != nil {
-		return nil, nil, nil, e
+		err = fmt.Errorf("failed to decode PHC hash: %w", e)
+		return
 	}
 	p.keyLen = uint32(len(h))
 
-	return p, s, h, nil
+	return
 }
 
-func GenerateSalt(s uint32) ([]byte, error) {
-	b := make([]byte, s)
+func GenerateSalt(s uint32) (b []byte, err error) {
+	b = make([]byte, s)
 	_, e := rand.Read(b)
 	if e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to generate salt: %w", e)
+		return
 	}
 
 	return b, nil

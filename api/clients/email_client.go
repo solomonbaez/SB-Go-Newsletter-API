@@ -17,7 +17,7 @@ type SMTPClient struct {
 	SmtpPort     int
 	smtpUsername string
 	smtpPassword string
-	Sender       models.SubscriberEmail
+	Sender       *models.SubscriberEmail
 }
 
 func NewSMTPClient(cfgFile *string) (client *SMTPClient, err error) {
@@ -28,7 +28,6 @@ func NewSMTPClient(cfgFile *string) (client *SMTPClient, err error) {
 		} else {
 			file = "../api/configs/dev.yaml"
 		}
-
 	}
 
 	cfg, e := configs.ConfigureEmailClient(file)
@@ -48,13 +47,21 @@ func NewSMTPClient(cfgFile *string) (client *SMTPClient, err error) {
 		SmtpPort:     cfg.Port,
 		smtpUsername: cfg.Username,
 		smtpPassword: cfg.Password,
-		Sender:       sender,
+		Sender:       &sender,
 	}
 
 	return
 }
 
 func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) (err error) {
+	if e := models.ParseNewsletter(newsletter); e != nil {
+		err = fmt.Errorf("invalid newsletter: %w", e)
+		return
+	} else if e = models.ParseNewsletter(newsletter.Content); e != nil {
+		err = fmt.Errorf("invalid newsletter content: %w", e)
+		return
+	}
+
 	m := gomail.NewMessage()
 	m.SetHeader("From", client.Sender.String())
 	m.SetHeader("To", newsletter.Recipient.String())

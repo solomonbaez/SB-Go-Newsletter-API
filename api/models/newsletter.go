@@ -9,7 +9,6 @@ import (
 type Newsletter struct {
 	Recipient SubscriberEmail
 	Content   *Body
-	// Key       string
 }
 
 type Body struct {
@@ -18,18 +17,18 @@ type Body struct {
 	Html  string `json:"html"`
 }
 
-func ParseNewsletter(newsletter interface{}) error {
-	v := reflect.ValueOf(newsletter).Elem()
-	nFields := v.NumField()
+func ParseNewsletter(newsletter interface{}) (err error) {
+	value := reflect.ValueOf(newsletter).Elem()
+	nFields := value.NumField()
 
 	for i := 0; i < nFields; i++ {
-		field := v.Field(i)
-		valid := field.IsValid() && !field.IsZero()
-		if !valid {
-			name := v.Type().Field(i).Name
-			return fmt.Errorf("field: %s cannot be empty", name)
+		field := value.Field(i)
+		if !field.IsValid() || reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface()) {
+			name := value.Type().Field(i).Name
+			err = fmt.Errorf("field: %s cannot be empty", name)
+			break
 		}
 	}
 
-	return nil
+	return
 }

@@ -19,9 +19,8 @@ type HeaderPair struct {
 
 func GetSavedResponse(c context.Context, dh *handlers.DatabaseHandler, id, key string) (response *http.Response, err error) {
 	var code int
-	var headerPairRecord []HeaderPair
 	var body []byte
-	var e error
+	var headerPairRecord []HeaderPair
 
 	tx, e := dh.DB.Begin(c)
 	if e != nil {
@@ -63,8 +62,7 @@ func GetSavedResponse(c context.Context, dh *handlers.DatabaseHandler, id, key s
 
 func SaveResponse(c context.Context, dh *handlers.DatabaseHandler, id, key string, response *http.Response) (err error) {
 	var query string
-	var e error
-	var headerPairRecord []*HeaderPair
+	var headerPairRecord []HeaderPair
 
 	status := uint16(response.StatusCode)
 
@@ -76,7 +74,7 @@ func SaveResponse(c context.Context, dh *handlers.DatabaseHandler, id, key strin
 
 			headerPairRecord = append(
 				headerPairRecord,
-				&HeaderPair{Name: key, Value: []byte(value)},
+				HeaderPair{Name: key, Value: []byte(value)},
 			)
 		}
 	}

@@ -11,7 +11,6 @@ import (
 const (
 	maxEmailLength = 100
 	maxNameLength  = 100
-	invalidRunes   = "{}/\\<>() "
 )
 
 var (
@@ -35,34 +34,39 @@ func (email SubscriberEmail) MarshalJSON() ([]byte, error) {
 	return json.Marshal(email.String())
 }
 
-func (email *SubscriberEmail) UnmarshalJSON(data []byte) error {
+func (email *SubscriberEmail) UnmarshalJSON(data []byte) (err error) {
 	var emailData string
 	if e := json.Unmarshal(data, &emailData); e != nil {
-		return e
+		err = fmt.Errorf("failed to unmarshal subscriber email JSON: %w", e)
+		return
 	}
 
 	*email = SubscriberEmail(emailData)
-	return nil
+	return
 }
 
-func ParseEmail(e string) (SubscriberEmail, error) {
+func ParseEmail(email string) (subscriber SubscriberEmail, err error) {
 	// empty field check
-	eTrim := strings.Trim(e, " ")
-	if eTrim == "" {
-		return "", errors.New("fields can not be empty or whitespace")
+	emptyField := strings.Trim(email, " ")
+	if emptyField == "" {
+		err = errors.New("fields can not be empty or whitespace")
+		return
 	}
 
 	// length checks
-	if len(e) > maxEmailLength {
-		return "", fmt.Errorf("email exceeds maximum length of: %d characters", maxEmailLength)
+	if len(email) > maxEmailLength {
+		err = fmt.Errorf("email exceeds maximum length of: %d characters", maxEmailLength)
+		return
 	}
 
 	// email format check
-	if !emailRegex.MatchString(e) {
-		return "", fmt.Errorf("invalid email format")
+	if !emailRegex.MatchString(email) {
+		err = fmt.Errorf("invalid email format")
+		return
 	}
 
-	return SubscriberEmail(e), nil
+	subscriber = SubscriberEmail(email)
+	return
 }
 
 type SubscriberName string
@@ -75,35 +79,40 @@ func (name SubscriberName) MarshalJSON() ([]byte, error) {
 	return json.Marshal(name.String())
 }
 
-func (name *SubscriberName) UnmarshalJSON(data []byte) error {
+func (name *SubscriberName) UnmarshalJSON(data []byte) (err error) {
 	var nameData string
 	if e := json.Unmarshal(data, &nameData); e != nil {
-		return e
+		err = fmt.Errorf("failed to unmarshal subscriber name JSON: %w", e)
+		return
 	}
 
 	*name = SubscriberName(nameData)
-	return nil
+	return
 }
 
-func ParseName(n string) (SubscriberName, error) {
+func ParseName(name string) (subscriber SubscriberName, err error) {
 	// injection check
-	for _, r := range n {
+	for _, r := range name {
 		c := string(r)
-		if strings.Contains(invalidRunes, c) {
-			return "", fmt.Errorf("invalid character in name: %v", c)
+		if strings.Contains(InvalidRunes, c) {
+			err = fmt.Errorf("invalid character in name: %v", c)
+			return
 		}
 	}
 
 	// empty field check
-	nTrim := strings.Trim(n, " ")
-	if nTrim == "" {
-		return "", errors.New("name cannot be empty or whitespace")
+	emptyField := strings.Trim(name, " ")
+	if emptyField == "" {
+		err = errors.New("name cannot be empty or whitespace")
+		return
 	}
 
 	// length checks
-	if len(n) > maxNameLength {
-		return "", fmt.Errorf("name exceeds maximum length of: %d characters", maxNameLength)
+	if len(name) > maxNameLength {
+		err = fmt.Errorf("name exceeds maximum length of: %d characters", maxNameLength)
+		return
 	}
 
-	return SubscriberName(n), nil
+	subscriber = SubscriberName(name)
+	return
 }
