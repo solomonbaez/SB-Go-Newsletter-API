@@ -44,9 +44,10 @@ func (r *RedisSettings) ConnectionString() string {
 	return fmt.Sprintf("%s:%s", r.host, r.port)
 }
 
-func ConfigureApp() (*AppSettings, error) {
+func ConfigureApp() (settings *AppSettings, err error) {
 	if e := viper.ReadInConfig(); e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to read configuration: %w", e)
+		return
 	}
 
 	database := &DBSettings{
@@ -65,13 +66,13 @@ func ConfigureApp() (*AppSettings, error) {
 
 	port := viper.GetUint16("application_port")
 
-	settings := &AppSettings{
+	settings = &AppSettings{
 		Database: database,
 		Redis:    redis,
 		Port:     port,
 	}
 
-	return settings, nil
+	return
 }
 
 // EMAIL CLIENT
@@ -83,15 +84,16 @@ type EmailClientSettings struct {
 	Sender   string
 }
 
-func ConfigureEmailClient(cfg string) (*EmailClientSettings, error) {
+func ConfigureEmailClient(cfg string) (settings *EmailClientSettings, err error) {
 	if cfg != "" {
 		viper.SetConfigFile(cfg)
 	}
 	if e := viper.ReadInConfig(); e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to read configuration: %w", e)
+		return
 	}
 
-	settings := &EmailClientSettings{
+	settings = &EmailClientSettings{
 		viper.GetString("email.server"),
 		viper.GetInt("email.port"),
 		viper.GetString("email.username"),
@@ -99,5 +101,5 @@ func ConfigureEmailClient(cfg string) (*EmailClientSettings, error) {
 		viper.GetString("email.sender"),
 	}
 
-	return settings, nil
+	return
 }

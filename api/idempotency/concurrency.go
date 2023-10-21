@@ -2,6 +2,7 @@ package idempotency
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
@@ -15,45 +16,55 @@ type NextAction struct {
 	SavedResponse   *http.Response
 }
 
-func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key string) (next *NextAction, e error) {
+func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key string) (next *NextAction, err error) {
 	nextAction := &NextAction{StartProcessing: nil, SavedResponse: nil}
 
 	tx, e := dh.DB.Begin(c)
 	if e != nil {
-		return nextAction, e
+		err = fmt.Errorf("failed to begin transaction: %w", e)
+		return
 	}
 
 	query := "INSERT INTO idempotency (id, idempotency_key, created) VALUES ($1, $2, now()) ON CONFLICT DO NOTHING"
 	idempotencyRows, e := tx.Exec(c, query, id, key)
 	if e != nil {
+		e = fmt.Errorf("failed to insert idempotency log: %w", e)
 		log.Error().
 			Err(e).
-			Msg("idempotency")
-		return nextAction, e
+			Msg("idempotency log failure")
+
+		err = e
+		return
 	}
 
 	query = "INSERT INTO idempotency_headers (idempotency_key) VALUES ($1)"
 	headerRows, e := tx.Exec(c, query, key)
 	if e != nil {
+		e = fmt.Errorf("failed to insert idempotency header log: %w", e)
 		log.Error().
 			Err(e).
-			Msg("headers")
-		return nextAction, e
+			Msg("idempotency log failure")
+
+		err = e
+		return
 	}
 
 	if idempotencyRows.RowsAffected() > 0 && headerRows.RowsAffected() > 0 {
 		nextAction.StartProcessing = tx
-		return nextAction, nil
+		return
 	}
 
 	savedResponse, e := GetSavedResponse(c, dh, id, key)
 	if e != nil {
+		e = fmt.Errorf("failed to save response: %w", e)
 		log.Error().
 			Err(e).
-			Msg("Saved Response")
-		return nil, e
+			Msg("failed to save response")
+
+		err = e
+		return
 	}
 
 	nextAction.SavedResponse = savedResponse
-	return nextAction, nil
+	return
 }

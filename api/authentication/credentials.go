@@ -17,15 +17,15 @@ import (
 func ValidateCredentials(c context.Context, dh *handlers.DatabaseHandler, credentials *models.Credentials) (id *string, err error) {
 	var userID string
 	var passwordHash string
+	var userErr error
 
-	var user_e error
 	query := "SELECT id, password_hash FROM users WHERE username=$1"
 	e := dh.DB.QueryRow(c, query, credentials.Username).Scan(&userID, &passwordHash)
 	if e != nil {
 		if errors.Is(e, pgx.ErrNoRows) {
 			e = errors.New("user not found")
 		} else {
-			e = fmt.Errorf("database error: %w", e)
+			e = fmt.Errorf("database query error: %w", e)
 		}
 
 		log.Error().
@@ -34,20 +34,21 @@ func ValidateCredentials(c context.Context, dh *handlers.DatabaseHandler, creden
 
 		// prevent timing attacks!
 		passwordHash = models.BaseHash
-		user_e = e
+		userErr = e
 	}
 
 	if e = models.ValidatePHC(credentials.Password, passwordHash); e != nil {
-		if user_e != nil {
-			e = user_e
+		if userErr != nil {
+			e = userErr
 		} else {
 			e = fmt.Errorf("invalid credentials: %w", e)
 		}
-		return nil, e
+		err = e
+		return
 	}
 
 	id = &userID
-	return id, nil
+	return
 }
 
 func ParseField(field string) (parsed *string, err error) {
@@ -55,16 +56,17 @@ func ParseField(field string) (parsed *string, err error) {
 	for _, r := range field {
 		c := string(r)
 		if strings.Contains(models.InvalidRunes, c) {
-			return nil, fmt.Errorf("invalid character in field: %s", c)
+			err = fmt.Errorf("invalid character in field: %s", c)
+			return
 		}
 	}
 
-	// empty field check
 	trimmedField := strings.Trim(field, " ")
 	if trimmedField == "" {
-		return nil, errors.New("field cannot be empty or whitespace")
+		err = errors.New("field cannot be empty or whitespace")
+		return
 	}
 
 	parsed = &field
-	return parsed, nil
+	return
 }

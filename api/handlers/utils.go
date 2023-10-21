@@ -21,44 +21,48 @@ func HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, "OK")
 }
 
-func StoreToken(c context.Context, tx pgx.Tx, id string, token string) (e error) {
+func StoreToken(c context.Context, tx pgx.Tx, id string, token string) (err error) {
 	query := "INSERT INTO subscription_tokens (subscription_token, subscriber_id) VALUES ($1, $2)"
-	_, e = tx.Exec(c, query, token, id)
+	_, e := tx.Exec(c, query, token, id)
 	if e != nil {
-		return fmt.Errorf("database error: %w", e)
+		err = fmt.Errorf("database error: %w", e)
+		return
 	}
 
 	tx.Commit(c)
-	return nil
+	return
 }
 
-func GenerateCSPRNG(tokenLen int) (csprng string, e error) {
+func GenerateCSPRNG(tokenLen int) (csprng string, err error) {
 	b := make([]byte, tokenLen)
 	maxIndex := big.NewInt(int64(len(charset)))
 
 	var r *big.Int
+	var e error
 	for i := range b {
 		r, e = rand.Int(rand.Reader, maxIndex)
 		if e != nil {
-			return "", fmt.Errorf("failed to generate csprng: %w", e)
+			err = fmt.Errorf("failed to generate csprng: %w", e)
+			return
 		}
 
 		b[i] = charset[r.Int64()]
 	}
 
 	csprng = string(b)
-	return csprng, nil
+	return
 }
 
-func BuildSubscriber(row pgx.CollectableRow) (subscriber *models.Subscriber, e error) {
+func BuildSubscriber(row pgx.CollectableRow) (subscriber *models.Subscriber, err error) {
 	var id string
 	var email models.SubscriberEmail
 	var name models.SubscriberName
 	var created time.Time
 	var status string
 
-	if e = row.Scan(&id, &email, &name, &created, &status); e != nil {
-		return nil, fmt.Errorf("database error: %w", e)
+	if e := row.Scan(&id, &email, &name, &created, &status); e != nil {
+		err = fmt.Errorf("database error: %w", e)
+		return
 	}
 
 	subscriber = &models.Subscriber{
@@ -68,7 +72,7 @@ func BuildSubscriber(row pgx.CollectableRow) (subscriber *models.Subscriber, e e
 		Status: status,
 	}
 
-	return subscriber, nil
+	return
 }
 
 func HandleError(c *gin.Context, id string, e error, response string, status int) {

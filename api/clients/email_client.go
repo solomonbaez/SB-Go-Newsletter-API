@@ -33,14 +33,14 @@ func NewSMTPClient(cfgFile *string) (client *SMTPClient, err error) {
 
 	cfg, e := configs.ConfigureEmailClient(file)
 	if e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to configure email client: %w", e)
+		return
 	}
 
-	// validate cfg sender email
-	s := cfg.Sender
-	sender, e := models.ParseEmail(s)
+	sender, e := models.ParseEmail(cfg.Sender)
 	if e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to parse email: %w", e)
+		return
 	}
 
 	client = &SMTPClient{
@@ -51,7 +51,7 @@ func NewSMTPClient(cfgFile *string) (client *SMTPClient, err error) {
 		Sender:       sender,
 	}
 
-	return client, nil
+	return
 }
 
 func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) (err error) {
@@ -64,8 +64,9 @@ func (client *SMTPClient) SendEmail(newsletter *models.Newsletter) (err error) {
 
 	dialer := gomail.NewDialer(client.SmtpServer, client.SmtpPort, client.smtpUsername, client.smtpPassword)
 	if e := dialer.DialAndSend(m); e != nil {
-		return fmt.Errorf("failed to send email: %w", e)
+		err = fmt.Errorf("failed to send email: %w", e)
+		return
 	}
 
-	return nil
+	return
 }

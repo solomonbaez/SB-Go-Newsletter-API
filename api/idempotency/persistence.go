@@ -3,6 +3,7 @@ package idempotency
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -16,7 +17,7 @@ type HeaderPair struct {
 	Value []byte
 }
 
-func GetSavedResponse(c context.Context, dh *handlers.DatabaseHandler, id, key string) (*http.Response, error) {
+func GetSavedResponse(c context.Context, dh *handlers.DatabaseHandler, id, key string) (response *http.Response, err error) {
 	var code int
 	var headerPairRecord []HeaderPair
 	var body []byte
@@ -24,23 +25,26 @@ func GetSavedResponse(c context.Context, dh *handlers.DatabaseHandler, id, key s
 
 	tx, e := dh.DB.Begin(c)
 	if e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to begin transaction: %w", e)
+		return
 	}
 
 	query := "SELECT response_status_code, response_body FROM idempotency WHERE user_id = $1 AND idempotency_key = $2"
 	e = tx.QueryRow(c, query, id, key).Scan(&code, &body)
 	if e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to insert idempotency log: %w", e)
+		return
 	}
 
 	query = "SELECT header_name, header_value FROM idempotency_headers WHERE idempotency_key = $1"
 	e = tx.QueryRow(c, query, key).Scan(&headerPairRecord)
 	if e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to insert idempotency header log: %w", e)
+		return
 	}
 
 	// Construct the response
-	response := &http.Response{
+	response = &http.Response{
 		Status:        http.StatusText(code),
 		StatusCode:    code,
 		Proto:         "HTTP/1.1",
@@ -54,13 +58,13 @@ func GetSavedResponse(c context.Context, dh *handlers.DatabaseHandler, id, key s
 	}
 	response.Body = io.NopCloser(bytes.NewReader(body))
 
-	return response, nil
+	return
 }
 
-func SaveResponse(c context.Context, dh *handlers.DatabaseHandler, id, key string, response *http.Response) error {
+func SaveResponse(c context.Context, dh *handlers.DatabaseHandler, id, key string, response *http.Response) (err error) {
 	var query string
 	var e error
-	var headerPairRecord []HeaderPair
+	var headerPairRecord []*HeaderPair
 
 	status := uint16(response.StatusCode)
 
@@ -70,40 +74,46 @@ func SaveResponse(c context.Context, dh *handlers.DatabaseHandler, id, key strin
 				Str("header", key).
 				Msg("")
 
-			headerPair := HeaderPair{Name: key, Value: []byte(value)}
-
-			headerPairRecord = append(headerPairRecord, headerPair)
+			headerPairRecord = append(
+				headerPairRecord,
+				&HeaderPair{Name: key, Value: []byte(value)},
+			)
 		}
 	}
 
 	tx, e := dh.DB.Begin(c)
 	if e != nil {
-		return e
+		err = fmt.Errorf("failed to begin transaction: %w", e)
+		return
 	}
 	defer tx.Rollback(c)
 
 	// Read the response body into a byte slice
 	bodyBytes, e := io.ReadAll(response.Body)
 	if e != nil {
-		return e
+		err = fmt.Errorf("failed to read HTTP response body: %w", e)
+		return
 	}
 
 	query = "UPDATE idempotency SET response_status_code = $3, response_body = $4 WHERE id = $1 AND idempotency_key = $2"
 	_, e = tx.Exec(c, query, id, key, status, bodyBytes)
 	if e != nil {
-		return e
+		err = fmt.Errorf("failed to update idempotency log: %w", e)
+		return
 	}
 
 	query = "UPDATE idempotency_headers SET header_name = $2, header_value = $3 WHERE idempotency_key = $1"
 	for _, hp := range headerPairRecord {
 		_, e = tx.Exec(c, query, key, hp.Name, hp.Value)
 		if e != nil {
-			return e
+			err = fmt.Errorf("failed to update idempotency header log: %w", e)
+			return
 		}
 	}
 	if e := tx.Commit(c); e != nil {
-		return e
+		err = fmt.Errorf("failed to commit transaction: %w", e)
+		return
 	}
 
-	return nil
+	return
 }
