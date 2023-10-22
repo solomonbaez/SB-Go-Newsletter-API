@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	// TODO implement cookie sessions
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
@@ -30,6 +29,7 @@ type App struct {
 	port     uint16
 }
 
+// TODO switch to cfg baseUrl
 const baseUrl = "localhost"
 
 // adjust for slowloris prevention
@@ -66,12 +66,10 @@ func init() {
 
 var pool *pgxpool.Pool
 
-// server
 func main() {
 	parentContext := context.Background()
 
 	var e error
-	// initialize database
 	pool, e = initializeDatabase(parentContext)
 	if e != nil {
 		log.Fatal().
@@ -88,6 +86,7 @@ func main() {
 	// initialize server components
 	dh := handlers.NewDatabaseHandler(pool)
 
+	// initialize newsletter delivery workers
 	go workers.WorkerLoop(parentContext, dh, client)
 
 	router, listener, e := initializeServer(dh)
@@ -111,8 +110,7 @@ func main() {
 		ReadHeaderTimeout: readHeaderTimeout,
 	}
 
-	e = server.Serve(listener)
-	if e != nil {
+	if e = server.Serve(listener); e != nil {
 		log.Fatal().
 			Err(e).
 			Msg("Could not start server")
@@ -121,23 +119,24 @@ func main() {
 	}
 }
 
-func initializeDatabase(c context.Context) (*pgxpool.Pool, error) {
-	pool, e := pgxpool.New(c, app.database.ConnectionString())
+func initializeDatabase(c context.Context) (pool *pgxpool.Pool, err error) {
+	var e error
+	pool, e = pgxpool.New(c, app.database.ConnectionString())
 	if e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to retrieve a database pool: %w", e)
+		return
 	}
 	if e = pool.Ping(context.Background()); e != nil {
+		err = fmt.Errorf("unresponsive database pool: %w", e)
 		pool.Close()
-		return nil, e
+		return
 	}
 
-	return pool, nil
+	return
 }
 
-func initializeServer(dh *handlers.DatabaseHandler) (*gin.Engine, net.Listener, error) {
-	var e error
-	// router
-	router := gin.Default()
+func initializeServer(dh *handlers.DatabaseHandler) (router *gin.Engine, listener net.Listener, err error) {
+	router = gin.Default()
 
 	key1, e := handlers.GenerateCSPRNG(32)
 	if e != nil {
@@ -155,7 +154,12 @@ func initializeServer(dh *handlers.DatabaseHandler) (*gin.Engine, net.Listener, 
 
 	redisStore, e := redis.NewStore(10, app.redis.Conn, app.redis.ConnectionString(), "", storeKeys[0], storeKeys[1])
 	if e != nil {
-		log.Fatal().Err(e).Msg("Failed to connect to redis")
+		err = fmt.Errorf("failed to connect to redis: %w", e)
+		log.Fatal().
+			Err(e).
+			Msg("failed to connect to redis")
+
+		return
 	}
 	router.Use(sessions.Sessions("admin", redisStore))
 
@@ -187,19 +191,20 @@ func initializeServer(dh *handlers.DatabaseHandler) (*gin.Engine, net.Listener, 
 	router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, dh) })
 
 	// listener
-	listener, e := net.Listen("tcp", fmt.Sprintf("localhost:%v", app.port))
+	listener, e = net.Listen("tcp", fmt.Sprintf("localhost:%v", app.port))
 	if e != nil {
 		listener, e = net.Listen("tcp", "localhost:0")
 		if e != nil {
+			err = fmt.Errorf("failed to bind listener: %w", e)
 			log.Fatal().
 				Err(e).
-				Msg("Could not bind listener")
+				Msg("failed to bind listener")
 
-			return nil, nil, e
+			return
 		}
 	}
 
-	return router, listener, nil
+	return
 }
 
 func AdminMiddleware() gin.HandlerFunc {
