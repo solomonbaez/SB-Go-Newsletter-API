@@ -11,6 +11,7 @@ import (
 func GetNewsletter(c *gin.Context) {
 	session := sessions.Default(c)
 	flashes := session.Flashes()
+
 	key, e := idempotency.GenerateIdempotencyKey()
 	if e != nil {
 		flashes = append(flashes, "Failed to generate idempotency key, please reload session")

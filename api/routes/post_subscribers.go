@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,18 +16,13 @@ import (
 
 const tokenLength = 25
 
-var confirmationLink string
-var confirmation = &models.Newsletter{}
-var loader *handlers.Loader
-
 func Subscribe(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) {
 	var subscriber models.Subscriber
+	var loader *handlers.Loader
 
 	requestID := c.GetString("requestID")
 
 	var response string
-	var e error
-
 	tx, e := dh.DB.Begin(c)
 	if e != nil {
 		response = "Failed to begin transaction"
@@ -42,10 +36,6 @@ func Subscribe(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMT
 		handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
 	}
-
-	log.Info().
-		Str("requestID", requestID).
-		Msg("Validating inputs...")
 
 	subscriberEmail, e := models.ParseEmail(loader.Email)
 	if e != nil {
@@ -65,17 +55,10 @@ func Subscribe(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMT
 		Name:   subscriberName,
 		Status: "pending",
 	}
-
-	// correlate request with inputs
-	log.Info().
-		Str("requestID", requestID).
-		Str("email", subscriber.Email.String()).
-		Str("name", subscriber.Name.String()).
-		Msg("Subscribing...")
-
 	if e := insertSubscriber(c, client, tx, subscriber); e != nil {
 		response = "Failed to insert subscriber"
 		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
 	}
 
 	log.Info().
@@ -84,28 +67,30 @@ func Subscribe(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMT
 		Msg(fmt.Sprintf("Success, sent a confirmation email to %v", subscriber.Email.String()))
 
 	c.JSON(http.StatusCreated, gin.H{"requestID": requestID, "subscriber": subscriber})
+	return
 }
 
-func insertSubscriber(c context.Context, client *clients.SMTPClient, tx pgx.Tx, subscriber models.Subscriber) error {
-	var e error
-
+// TODO extract confirmation email logic as a worker TASK
+func insertSubscriber(c context.Context, client *clients.SMTPClient, tx pgx.Tx, subscriber models.Subscriber) (err error) {
 	newID := uuid.NewString()
-	created := time.Now()
-
-	query := "INSERT INTO subscriptions (id, email, name, created, status) VALUES ($1, $2, $3, $4, $5)"
-	_, e = tx.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), created, "pending")
+	query := "INSERT INTO subscriptions (id, email, name, created, status) VALUES ($1, $2, $3, now(), $5)"
+	_, e := tx.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), "pending")
 	if e != nil {
-		return e
+		err = fmt.Errorf("failed to insert new subscriber: %w", e)
+		return
 	}
 
 	token, e := handlers.GenerateCSPRNG(tokenLength)
 	if e != nil {
-		return e
+		err = fmt.Errorf("failed to generate subscription request token: %w", e)
+		return
 	}
 
+	// Span TODO refers to this segment
 	if client.SmtpServer != "test" {
+		var confirmation = &models.Newsletter{}
+		confirmationLink := fmt.Sprintf("%v/confirm/%v", handlers.BaseURL, token)
 		confirmation.Recipient = subscriber.Email
-		confirmationLink = fmt.Sprintf("%v/confirm/%v", handlers.BaseURL, token)
 		confirmation.Content = &models.Body{
 			Title: "Please confirm your subscription",
 			Text:  fmt.Sprintf("Welcome to our newsletter! Please confirm your subscription at: %v", confirmationLink),
@@ -113,13 +98,16 @@ func insertSubscriber(c context.Context, client *clients.SMTPClient, tx pgx.Tx, 
 		}
 
 		if e := client.SendEmail(confirmation); e != nil {
-			return e
+			err = fmt.Errorf("failed to send confirmation email: %w", e)
+			return
 		}
 	}
 
 	if e := handlers.StoreToken(c, tx, newID, token); e != nil {
-		return e
+		err = fmt.Errorf("failed to store subscription request token: %w", e)
+		return
 	}
+	//
 
-	return nil
+	return
 }

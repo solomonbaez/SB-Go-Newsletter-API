@@ -18,8 +18,8 @@ import (
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/workers"
 )
 
-func InsertNewsletter(c *gin.Context, tx pgx.Tx, content *models.Body) (*string, error) {
-	id := uuid.NewString()
+func InsertNewsletter(c *gin.Context, tx pgx.Tx, content *models.Body) (id *string, err error) {
+	issueID := uuid.NewString()
 
 	query := `INSERT INTO newsletter_issues (
 				newsletter_issue_id, 
@@ -29,26 +29,24 @@ func InsertNewsletter(c *gin.Context, tx pgx.Tx, content *models.Body) (*string,
 				published_at
 			)
 			VALUES ($1, $2, $3, $4, now())`
-	_, e := tx.Exec(
-		c, query, id, content.Title, content.Text, content.Html,
-	)
+	_, e := tx.Exec(c, query, issueID, content.Title, content.Text, content.Html)
 	if e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to insert newsletter issue: %w", e)
+		return
 	}
 
-	return &id, e
+	id = &issueID
+	return
 }
 
 func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) {
 	var newsletter models.Newsletter
 	var body models.Body
-	var response string
-	var e error
+
+	requestID := c.GetString("requestID")
 
 	session := sessions.Default(c)
 	id := fmt.Sprintf("%v", session.Get("id"))
-
-	requestID := c.GetString("requestID")
 	key, _ := c.GetPostForm("idempotency_key")
 	session.Set("key", key)
 
@@ -56,7 +54,8 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 	body.Text, _ = c.GetPostForm("text")
 	body.Html, _ = c.GetPostForm("html")
 
-	if e = models.ParseNewsletter(&body); e != nil {
+	var response string
+	if e := models.ParseNewsletter(&body); e != nil {
 		response = "Failed to parse newsletter"
 		handlers.HandleError(c, requestID, e, response, http.StatusBadRequest)
 		return
@@ -106,6 +105,7 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 
 		c.Header("X-Redirect", "Newsletter")
 		c.Redirect(http.StatusSeeOther, "dashboard")
+		return
 
 	} else if transaction.SavedResponse != nil {
 		log.Info().
@@ -120,15 +120,15 @@ func PostNewsletter(c *gin.Context, dh *handlers.DatabaseHandler, client *client
 		if status == http.StatusSeeOther {
 			location := headers.Get("Location")
 			c.Redirect(status, location)
-
-		} else {
-			c.JSON(status, headers)
+			return
 		}
 	}
 
+	c.Header("X-Redirect", "Fatal")
+	c.Redirect(http.StatusSeeOther, "newsletter")
 }
 
-func SeeOther(c *gin.Context, location string) (response *http.Response, e error) {
+func SeeOther(c *gin.Context, location string) (response *http.Response, err error) {
 	response = &http.Response{
 		Status:        http.StatusText(http.StatusSeeOther),
 		StatusCode:    http.StatusSeeOther,
@@ -137,16 +137,15 @@ func SeeOther(c *gin.Context, location string) (response *http.Response, e error
 		ProtoMinor:    1,
 		Header:        make(http.Header),
 		Request:       c.Request,
-		ContentLength: -1, // Set the content length as needed
+		ContentLength: -1,
 	}
 
 	response.Header.Set("Location", location)
-
 	responseBytes, e := io.ReadAll(c.Request.Body)
 	if e != nil {
-		return nil, e
+		err = fmt.Errorf("failed to read request body: %w", e)
+		return
 	}
 	response.Body = io.NopCloser(bytes.NewReader(responseBytes))
-
-	return response, e
+	return
 }

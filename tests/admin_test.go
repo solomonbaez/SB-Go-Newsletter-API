@@ -17,26 +17,7 @@ import (
 	utils "github.com/solomonbaez/SB-Go-Newsletter-API/test_utils"
 )
 
-func TestAdmin(t *testing.T) {
-	tests := []struct {
-		name string
-		fn   func(*testing.T)
-	}{
-		{"GetLogin", getLogin},
-		{"PostLogin", postLogin},
-		{"GetAdminDashboard", getAdminDashboard},
-		{"GetChangePassword", getChangePassword},
-		{"PostChangePassword", postChangePassword},
-		{"GetLogout", getLogout},
-	}
-
-	t.Parallel()
-	for _, test := range tests {
-		t.Run(test.name, test.fn)
-	}
-}
-
-func getLogin(t *testing.T) {
+func TestGetLogin(t *testing.T) {
 	test := &struct {
 		name           string
 		expectedStatus int
@@ -63,7 +44,7 @@ func getLogin(t *testing.T) {
 }
 
 // TODO research how to seed records into pgxmock tables
-func postLogin(t *testing.T) {
+func TestPostLogin(t *testing.T) {
 	// base credentials to test against
 	seedCredentials := &struct {
 		userID       string
@@ -151,7 +132,7 @@ func postLogin(t *testing.T) {
 	}
 }
 
-func getAdminDashboard(t *testing.T) {
+func TestGetAdminDashboard(t *testing.T) {
 	test := &struct {
 		name           string
 		expectedStatus int
@@ -180,7 +161,7 @@ func getAdminDashboard(t *testing.T) {
 	}
 }
 
-func getChangePassword(t *testing.T) {
+func TestGetChangePassword(t *testing.T) {
 	test := &struct {
 		name           string
 		expectedStatus int
@@ -207,7 +188,7 @@ func getChangePassword(t *testing.T) {
 	}
 }
 
-func postChangePassword(t *testing.T) {
+func TestPostChangePassword(t *testing.T) {
 	// base credentials to test against
 	seedCredentials := &struct {
 		userID       string
@@ -338,7 +319,7 @@ func postChangePassword(t *testing.T) {
 	}
 }
 
-func getLogout(t *testing.T) {
+func TestGetLogout(t *testing.T) {
 	test := &struct {
 		name           string
 		expectedStatus int

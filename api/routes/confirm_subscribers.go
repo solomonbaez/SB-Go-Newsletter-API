@@ -9,16 +9,14 @@ import (
 )
 
 func ConfirmSubscriber(c *gin.Context, dh *handlers.DatabaseHandler) {
-	var id string
-	var query string
 	var response string
-	var e error
 
 	requestID := c.GetString("requestID")
 	token := c.Param("token")
 
-	query = "SELECT subscriber_id FROM subscription_tokens WHERE subscription_token = $1"
-	e = dh.DB.QueryRow(c, query, token).Scan(&id)
+	var id string
+	query := "SELECT subscriber_id FROM subscription_tokens WHERE subscription_token = $1"
+	e := dh.DB.QueryRow(c, query, token).Scan(&id)
 	if e != nil {
 		response = "Failed to fetch subscriber ID"
 		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
@@ -34,7 +32,9 @@ func ConfirmSubscriber(c *gin.Context, dh *handlers.DatabaseHandler) {
 	}
 
 	log.Info().
+		Str("id", id).
 		Msg("Subscription confirmed")
 
 	c.JSON(http.StatusAccepted, gin.H{"requestID": requestID, "subscriber": "Subscription confirmed"})
+	return
 }

@@ -22,6 +22,5 @@ func Logout(c *gin.Context) {
 		Msg("logged out")
 
 	c.Header("X-Redirect", "Logged out")
-
 	c.Redirect(http.StatusSeeOther, "../login")
 }

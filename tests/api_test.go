@@ -20,26 +20,7 @@ import (
 	utils "github.com/solomonbaez/SB-Go-Newsletter-API/test_utils"
 )
 
-func TestAPI(t *testing.T) {
-	tests := []struct {
-		name string
-		fn   func(*testing.T)
-	}{
-		{"HealthCheck", healthCheck},
-		{"GetSubscribers", getSubscribers},
-		{"GetConfirmedSubscribers", getConfirmedSubscribers},
-		{"GetSubscriberByID", getSubscribersByID},
-		{"PostSubscribe", postSubscribe},
-		{"ConfirmSubscriber", confirmSubscriber},
-	}
-
-	t.Parallel()
-	for _, test := range tests {
-		t.Run(test.name, test.fn)
-	}
-}
-
-func healthCheck(t *testing.T) {
+func TestHealthCheck(t *testing.T) {
 	test := &struct {
 		name           string
 		expectedStatus int
@@ -69,7 +50,7 @@ func healthCheck(t *testing.T) {
 	}
 }
 
-func getSubscribers(t *testing.T) {
+func TestGetSubscribers(t *testing.T) {
 	seedSubscriber := &struct {
 		id      string
 		email   models.SubscriberEmail
@@ -154,7 +135,7 @@ func getSubscribers(t *testing.T) {
 	}
 }
 
-func getConfirmedSubscribers(t *testing.T) {
+func TestGetConfirmedSubscribers(t *testing.T) {
 	seedSubscriber := &struct {
 		id      string
 		email   models.SubscriberEmail
@@ -210,7 +191,7 @@ func getConfirmedSubscribers(t *testing.T) {
 	}
 }
 
-func getSubscribersByID(t *testing.T) {
+func TestGetSubscribersByID(t *testing.T) {
 	seedSubscriber := &struct {
 		id      string
 		email   models.SubscriberEmail
@@ -293,7 +274,7 @@ func getSubscribersByID(t *testing.T) {
 }
 
 // TODO clean up routes.Subscribe + routes.insertSubscriber
-func postSubscribe(t *testing.T) {
+func TestPostSubscribe(t *testing.T) {
 	seedSubscriber := &struct {
 		id      string
 		email   models.SubscriberEmail
@@ -390,7 +371,7 @@ func postSubscribe(t *testing.T) {
 	}
 }
 
-func confirmSubscriber(t *testing.T) {
+func TestConfirmSubscriber(t *testing.T) {
 	seedSubscriber := &struct {
 		token string
 		id    string

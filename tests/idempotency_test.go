@@ -9,7 +9,7 @@ import (
 	utils "github.com/solomonbaez/SB-Go-Newsletter-API/test_utils"
 )
 
-func Test_GetSavedResponse_Passes(t *testing.T) {
+func TestGetSavedResponse(t *testing.T) {
 	app := utils.NewMockApp()
 	defer app.Database.Close(app.Context)
 
@@ -40,7 +40,7 @@ func Test_GetSavedResponse_Passes(t *testing.T) {
 	app.Database.ExpectationsWereMet()
 }
 
-func Test_PostSaveResponse_Passes(t *testing.T) {
+func TestPostSaveResponse(t *testing.T) {
 	app := utils.NewMockApp()
 	defer app.Database.Close(app.Context)
 
