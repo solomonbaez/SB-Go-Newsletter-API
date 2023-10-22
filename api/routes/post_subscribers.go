@@ -67,7 +67,6 @@ func Subscribe(c *gin.Context, dh *handlers.DatabaseHandler, client *clients.SMT
 		Msg(fmt.Sprintf("Success, sent a confirmation email to %v", subscriber.Email.String()))
 
 	c.JSON(http.StatusCreated, gin.H{"requestID": requestID, "subscriber": subscriber})
-	return
 }
 
 // TODO extract confirmation email logic as a worker TASK

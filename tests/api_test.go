@@ -351,7 +351,7 @@ func TestPostSubscribe(t *testing.T) {
 
 			app.Database.ExpectBegin()
 			app.Database.ExpectExec("INSERT INTO subscriptions").
-				WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+				WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 				WillReturnResult(pgxmock.NewResult("INSERT", 1))
 			app.Database.ExpectExec("INSERT INTO subscription_tokens").
 				WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
