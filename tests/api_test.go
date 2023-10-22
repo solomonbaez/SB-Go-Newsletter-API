@@ -94,7 +94,7 @@ func getSubscribers(t *testing.T) {
 			"(+) Test case 1 -> GET request to /subscribers with no subscribers -> passes",
 			false,
 			http.StatusOK,
-			`{"requestID":"","subscribers":"No subscribers"}`,
+			`{"requestID":"","subscribers":[]}`,
 		},
 		{
 			"(+) Test case 2 -> GET request to /subscribers with subscribers -> passes",
