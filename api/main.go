@@ -183,6 +183,7 @@ func initializeServer(dh *handlers.DatabaseHandler) (router *gin.Engine, listene
 		router.Use(TraceMiddleware())
 	}
 	router.Use(CSPMiddleware())
+	router.Use(SecurityHeadersMiddleware())
 
 	key1, e := handlers.GenerateCSPRNG(32)
 	if e != nil {
@@ -297,6 +298,18 @@ func TraceMiddleware() gin.HandlerFunc {
 func CSPMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://localhost:8000; img-src 'self' data:; style-src 'self' 'unsafe-inline';")
+		c.Next()
+	}
+}
+
+func SecurityHeadersMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Set HSTS header (enforces HTTPS for a specified duration)
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+
+		// Set X-Content-Type-Options header (prevents MIME type sniffing)
+		c.Header("X-Content-Type-Options", "nosniff")
+
 		c.Next()
 	}
 }
