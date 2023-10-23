@@ -36,5 +36,4 @@ func ConfirmSubscriber(c *gin.Context, dh *handlers.DatabaseHandler) {
 		Msg("Subscription confirmed")
 
 	c.JSON(http.StatusAccepted, gin.H{"requestID": requestID, "subscriber": "Subscription confirmed"})
-	return
 }

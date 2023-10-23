@@ -35,8 +35,6 @@ func newMockClient() (client *clients.SMTPClient) {
 	return client
 }
 
-var admin *gin.RouterGroup
-
 func NewMockApp() App {
 	var recorder *httptest.ResponseRecorder
 	var context *gin.Context
