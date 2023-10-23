@@ -137,6 +137,30 @@ func main() {
 	}
 }
 
+func initializeTracing() (err error) {
+	exporter, e := stdouttrace.New(stdouttrace.WithPrettyPrint())
+	if e != nil {
+		err = fmt.Errorf("failed to initialize telemetry: %w", e)
+		log.Fatal().
+			Err(e).
+			Msg("failed to initialize telemetry")
+
+		return
+	}
+
+	tp := trace.NewTracerProvider(
+		trace.WithSyncer(exporter),
+		trace.WithSampler(trace.AlwaysSample()),
+		trace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("newsletter"),
+		)),
+	)
+
+	otel.SetTracerProvider(tp)
+	return
+}
+
 func initializeDatabase(c context.Context) (pool *pgxpool.Pool, err error) {
 	var e error
 	pool, e = pgxpool.New(c, app.database.ConnectionString())
@@ -158,6 +182,7 @@ func initializeServer(dh *handlers.DatabaseHandler) (router *gin.Engine, listene
 	if enableTracing {
 		router.Use(TraceMiddleware())
 	}
+	router.Use(CSPMiddleware())
 
 	key1, e := handlers.GenerateCSPRNG(32)
 	if e != nil {
@@ -243,30 +268,6 @@ func AdminMiddleware() gin.HandlerFunc {
 	}
 }
 
-func initializeTracing() (err error) {
-	exporter, e := stdouttrace.New(stdouttrace.WithPrettyPrint())
-	if e != nil {
-		err = fmt.Errorf("failed to initialize telemetry: %w", e)
-		log.Fatal().
-			Err(e).
-			Msg("failed to initialize telemetry")
-
-		return
-	}
-
-	tp := trace.NewTracerProvider(
-		trace.WithSyncer(exporter),
-		trace.WithSampler(trace.AlwaysSample()),
-		trace.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String("newsletter"),
-		)),
-	)
-
-	otel.SetTracerProvider(tp)
-	return
-}
-
 func TraceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// request identification
@@ -289,6 +290,13 @@ func TraceMiddleware() gin.HandlerFunc {
 		defer span.End()
 
 		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
+}
+
+func CSPMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://localhost:8000; img-src 'self' data:; style-src 'self' 'unsafe-inline';")
 		c.Next()
 	}
 }
