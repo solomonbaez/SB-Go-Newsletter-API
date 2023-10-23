@@ -346,7 +346,7 @@ func TestPostSubscribe(t *testing.T) {
 		for _, d := range tc.data {
 			// initialization
 			app := utils.NewMockApp()
-			app.Router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, app.DH, app.Client) })
+			app.Router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, app.DH) })
 			request, _ := http.NewRequest("POST", "/subscribe", strings.NewReader(d))
 
 			app.Database.ExpectBegin()
