@@ -187,7 +187,7 @@ func initializeServer(dh *handlers.DatabaseHandler) (router *gin.Engine, listene
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/login", routes.GetLogin)
 	router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, dh) })
-	router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, dh, client) })
+	router.POST("/subscribe", func(c *gin.Context) { routes.Subscribe(c, dh) })
 	router.GET("/confirm/:token", func(c *gin.Context) { routes.ConfirmSubscriber(c, dh) })
 
 	// listener
