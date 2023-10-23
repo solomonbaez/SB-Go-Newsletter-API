@@ -33,6 +33,38 @@ func StoreToken(c context.Context, tx pgx.Tx, id string, token string) (err erro
 	return
 }
 
+func getToken(c context.Context, tx pgx.Tx, subscriberEmail *models.SubscriberEmail) (token string, err error) {
+	query := "SELECT subscriber_id FROM subscribers WHERE subscriber_email = $1"
+	var subscriberID string
+	if e := tx.QueryRow(c, query, subscriberEmail.String()).Scan(&subscriberID); e != nil {
+		err = fmt.Errorf("database error: %w", e)
+		return
+	}
+
+	query = "SELECT subscription_token FROM subscription_tokens WHERE subscriber_id = $1"
+	if e := tx.QueryRow(c, query, subscriberID).Scan(&token); e != nil {
+		err = fmt.Errorf("database error: %w", e)
+		return
+	}
+
+	return
+}
+
+func GenerateConfirmationLink(c context.Context, tx pgx.Tx, subscriberEmail *models.SubscriberEmail) (confirmation string, err error) {
+	token, e := getToken(c, tx, subscriberEmail)
+	if e != nil {
+		err = fmt.Errorf("failed to retrieve subscription token: %w", e)
+	}
+
+	var link strings.Builder
+	link.WriteString(BaseURL)
+	link.WriteString(":")
+	link.WriteString(token)
+
+	confirmation = link.String()
+	return
+}
+
 func GenerateCSPRNG(tokenLen int) (csprng string, err error) {
 	b := make([]byte, tokenLen)
 	maxIndex := big.NewInt(int64(len(charset)))

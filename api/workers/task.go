@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
@@ -41,6 +42,18 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 		if e != nil {
 			resultChan <- ExecutionOutcomeError
 			return
+		}
+		// base confirmation email == 0
+		if task.NewsletterIssueID == "0" {
+			link, e := handlers.GenerateConfirmationLink(c, tx, &newsletter.Recipient)
+			if e != nil {
+				resultChan <- ExecutionOutcomeError
+				return
+			}
+
+			// replace placeholders with new link
+			newsletter.Content.Text = strings.Replace(newsletter.Content.Text, "{{.link}}", link, 1)
+			newsletter.Content.Html = strings.Replace(newsletter.Content.Html, "{{.link}}", link, 1)
 		}
 
 		if e = models.ParseNewsletter(&newsletter); e != nil {
