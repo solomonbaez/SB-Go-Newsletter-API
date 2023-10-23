@@ -43,8 +43,8 @@ func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *cli
 			resultChan <- ExecutionOutcomeError
 			return
 		}
-		// base confirmation email == 0
-		if task.NewsletterIssueID == "0" {
+		// base confirmation email == 0 -> it may be obtuse for this to be hardcoded
+		if task.NewsletterIssueID == "00000000-0000-0000-0000-000000000000" {
 			link, e := handlers.GenerateConfirmationLink(c, tx, &newsletter.Recipient)
 			if e != nil {
 				resultChan <- ExecutionOutcomeError
@@ -156,12 +156,11 @@ func EnqueConfirmationTasks(c context.Context, tx pgx.Tx, subscriberEmail string
 				subscriber_email
 			)
 			VALUES ($1, $2)`
-	_, e := tx.Exec(c, query, "0", subscriberEmail)
+	_, e := tx.Exec(c, query, "00000000-0000-0000-0000-000000000000", subscriberEmail)
 	if e != nil {
 		err = fmt.Errorf("failed to enque confirmation task: %w", e)
 		return
 	}
 
-	tx.Commit(c)
 	return
 }

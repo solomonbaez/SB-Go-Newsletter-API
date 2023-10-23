@@ -29,12 +29,11 @@ func StoreToken(c context.Context, tx pgx.Tx, id string, token string) (err erro
 		return
 	}
 
-	tx.Commit(c)
 	return
 }
 
 func getToken(c context.Context, tx pgx.Tx, subscriberEmail *models.SubscriberEmail) (token string, err error) {
-	query := "SELECT subscriber_id FROM subscribers WHERE subscriber_email = $1"
+	query := "SELECT id FROM subscriptions WHERE email = $1"
 	var subscriberID string
 	if e := tx.QueryRow(c, query, subscriberEmail.String()).Scan(&subscriberID); e != nil {
 		err = fmt.Errorf("database error: %w", e)
@@ -54,11 +53,16 @@ func GenerateConfirmationLink(c context.Context, tx pgx.Tx, subscriberEmail *mod
 	token, e := getToken(c, tx, subscriberEmail)
 	if e != nil {
 		err = fmt.Errorf("failed to retrieve subscription token: %w", e)
+		log.Error().
+			Err(err).
+			Msg("")
+
+		return
 	}
 
 	var link strings.Builder
 	link.WriteString(BaseURL)
-	link.WriteString(":")
+	link.WriteString("/confirm/")
 	link.WriteString(token)
 
 	confirmation = link.String()

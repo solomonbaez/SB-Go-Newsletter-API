@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/workers"
 )
 
 const tokenLength = 25
@@ -59,20 +60,29 @@ func Subscribe(c *gin.Context, dh *handlers.DatabaseHandler) {
 		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
+	if e := workers.EnqueConfirmationTasks(c, tx, subscriber.Email.String()); e != nil {
+		response = "Failed to enque confirmation email"
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
 
 	log.Info().
 		Str("requestID", requestID).
 		Str("email", subscriber.Email.String()).
-		Msg(fmt.Sprintf("Success, sent a confirmation email to %v", subscriber.Email.String()))
+		Msg(fmt.Sprintf("Success, enqueued a confirmation email to %v", subscriber.Email.String()))
 
+	tx.Commit(c)
 	c.JSON(http.StatusCreated, gin.H{"requestID": requestID, "subscriber": &subscriber})
 }
 
 // TODO extract confirmation email logic as a worker TASK
 func insertSubscriber(c context.Context, tx pgx.Tx, subscriber *models.Subscriber) (err error) {
 	newID := uuid.NewString()
-	query := "INSERT INTO subscriptions (id, email, name, created, status) VALUES ($1, $2, $3, now(), $5)"
-	_, e := tx.Exec(c, query, newID, subscriber.Email.String(), subscriber.Name.String(), "pending")
+
+	email := subscriber.Email.String()
+	name := subscriber.Name.String()
+	query := "INSERT INTO subscriptions (id, email, name, status, created) VALUES ($1, $2, $3, $4, now())"
+	_, e := tx.Exec(c, query, newID, email, name, "pending")
 	if e != nil {
 		err = fmt.Errorf("failed to insert new subscriber: %w", e)
 		return
@@ -88,7 +98,6 @@ func insertSubscriber(c context.Context, tx pgx.Tx, subscriber *models.Subscribe
 		err = fmt.Errorf("failed to store subscription request token: %w", e)
 		return
 	}
-	//
 
 	return
 }
