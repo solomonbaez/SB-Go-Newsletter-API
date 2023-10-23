@@ -273,7 +273,6 @@ func TestGetSubscribersByID(t *testing.T) {
 	}
 }
 
-// TODO clean up routes.Subscribe + routes.insertSubscriber
 func TestPostSubscribe(t *testing.T) {
 	seedSubscriber := &struct {
 		id      string
@@ -354,6 +353,9 @@ func TestPostSubscribe(t *testing.T) {
 				WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 				WillReturnResult(pgxmock.NewResult("INSERT", 1))
 			app.Database.ExpectExec("INSERT INTO subscription_tokens").
+				WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+				WillReturnResult(pgxmock.NewResult("INSERT", 1))
+			app.Database.ExpectExec("INSERT INTO issue_delivery_queue").
 				WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 				WillReturnResult(pgxmock.NewResult("INSERT", 1))
 			app.Database.ExpectCommit()
