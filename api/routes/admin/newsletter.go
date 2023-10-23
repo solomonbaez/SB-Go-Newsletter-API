@@ -15,8 +15,8 @@ func GetNewsletter(c *gin.Context) {
 	key, e := idempotency.GenerateIdempotencyKey()
 	if e != nil {
 		flashes = append(flashes, "Failed to generate idempotency key, please reload session")
+		session.Save()
 	}
-	session.Save()
 
 	c.HTML(http.StatusOK, "newsletter.html", gin.H{"flashes": flashes, "idempotency_key": key})
 }

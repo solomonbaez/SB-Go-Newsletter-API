@@ -16,6 +16,7 @@ type NextAction struct {
 	SavedResponse   *http.Response
 }
 
+// TODO implement idempotency expiry
 func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key string) (next *NextAction, err error) {
 	next = &NextAction{StartProcessing: nil, SavedResponse: nil}
 
