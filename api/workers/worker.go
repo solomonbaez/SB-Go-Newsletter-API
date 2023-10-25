@@ -19,7 +19,7 @@ const (
 	ExecutionOutcomeTaskCompleted
 )
 
-func WorkerLoop(c context.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) {
+func DeliveryWorker(c context.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) {
 	resultChan := make(chan ExecutionOutcome)
 
 	go func() {
@@ -47,7 +47,7 @@ func WorkerLoop(c context.Context, dh *handlers.DatabaseHandler, client *clients
 const pruningInterval = 12
 const timeoutInterval = 10
 
-func KeyPruningLoop(c context.Context, dh *handlers.DatabaseHandler) {
+func PruningWorker(c context.Context, dh *handlers.DatabaseHandler) {
 	ticker := time.NewTicker(pruningInterval * time.Hour)
 	defer ticker.Stop()
 
@@ -58,32 +58,13 @@ func KeyPruningLoop(c context.Context, dh *handlers.DatabaseHandler) {
 			_, cancel := context.WithTimeout(c, timeoutInterval*time.Second)
 			defer cancel()
 
-			var err error
-			tx, e := dh.DB.Begin(c)
-			if e != nil {
-				err = fmt.Errorf("failed to begin transaction: %w", e)
-				log.Error().
-					Err(err).
-					Msg("failed to begin transaction")
-
-				continue
-			}
-
-			if e := idempotency.PruneIdempotencyKeys(c, tx, expiration); e != nil {
-				err = fmt.Errorf("failed to prune expired idempotency keys: %w", e)
+			if e := idempotency.PruneIdempotencyKeys(c, dh, expiration); e != nil {
+				err := fmt.Errorf("failed to prune expired idempotency keys: %w", e)
 				log.Error().
 					Err(err).
 					Msg("")
 
-				tx.Rollback(c)
 				continue
-			}
-
-			if e := tx.Commit(c); e != nil {
-				err = fmt.Errorf("failed to commit transaction: %w", e)
-				log.Error().
-					Err(err).
-					Msg("")
 			}
 		case <-c.Done():
 			return

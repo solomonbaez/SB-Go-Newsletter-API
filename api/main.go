@@ -105,8 +105,8 @@ func main() {
 	dh := handlers.NewDatabaseHandler(pool)
 
 	// initialize newsletter delivery workers
-	go workers.WorkerLoop(parentContext, dh, client)
-	go workers.KeyPruningLoop(parentContext, dh)
+	go workers.DeliveryWorker(parentContext, dh, client)
+	go workers.PruningWorker(parentContext, dh)
 
 	router, listener, e := initializeServer(dh)
 	if e != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
+	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
 )
 
 // Implemented as a fallback on request retries
@@ -47,9 +48,19 @@ func DeleteIdempotencyKey(c *gin.Context, tx pgx.Tx, key IdempotencyKey) (err er
 }
 
 // Implemented as a general purpose database sweep
-func PruneIdempotencyKeys(c context.Context, tx pgx.Tx, expiration time.Time) (err error) {
+func PruneIdempotencyKeys(c context.Context, dh *handlers.DatabaseHandler, expiration time.Time) (err error) {
+	tx, e := dh.DB.Begin(c)
+	if e != nil {
+		err = fmt.Errorf("failed to begin transaction: %w", e)
+		log.Error().
+			Err(err).
+			Msg("failed to begin transaction")
+
+		return
+	}
+
 	query := "DELETE FROM idempotency WHERE created <= $1"
-	_, e := tx.Exec(c, query, expiration)
+	_, e = tx.Exec(c, query, expiration)
 	if e != nil {
 		err = fmt.Errorf("failed to prune expired idempotency keys: %w", e)
 		log.Error().
@@ -68,6 +79,13 @@ func PruneIdempotencyKeys(c context.Context, tx pgx.Tx, expiration time.Time) (e
 			Msg("")
 
 		return
+	}
+
+	if e := tx.Commit(c); e != nil {
+		err = fmt.Errorf("failed to commit transaction: %w", e)
+		log.Error().
+			Err(err).
+			Msg("")
 	}
 
 	log.Info().
