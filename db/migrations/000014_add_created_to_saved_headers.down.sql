@@ -1,0 +1,1 @@
+ALTER TABLE idempotency_headers DROP COLUMN created; 

@@ -1,0 +1,1 @@
+ALTER TABLE idempotency_headers ADD COLUMN created timestamptz NOT NULL;
