@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -43,65 +44,49 @@ func WorkerLoop(c context.Context, dh *handlers.DatabaseHandler, client *clients
 	}
 }
 
-func WorkerLoopWithPruning(c context.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) {
-	resultChan := make(chan ExecutionOutcome)
-	keyCleanupTimer := time.NewTimer(24 * time.Hour)
+const pruningInterval = 12
+const timeoutInterval = 10
 
-	for {
-		select {
-		case <-keyCleanupTimer.C:
-			tryKeyCleanup(c, dh)
-			keyCleanupTimer.Reset(24 * time.Hour)
-
-		case resultChan <- TryExecuteTask(c, dh, client):
-			outcome := <-resultChan
-			switch outcome {
-			case ExecutionOutcomeEmptyQueue:
-				log.Info().
-					Msg("Empty queue")
-				time.Sleep(10 * time.Second)
-			case ExecutionOutcomeError:
-				log.Error().
-					Msg("Failed to complete task")
-				time.Sleep(1 * time.Second)
-			case ExecutionOutcomeTaskCompleted:
-				log.Info().
-					Msg("Task complete")
-			}
-		}
-	}
-}
-
-func tryKeyCleanup(c context.Context, dh *handlers.DatabaseHandler) {
-	ticker := time.NewTicker(24 * time.Hour)
+func KeyPruningLoop(c context.Context, dh *handlers.DatabaseHandler) {
+	ticker := time.NewTicker(pruningInterval * time.Hour)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			expiration := time.Now().Add(-24 * time.Hour)
-
-			_, cancel := context.WithTimeout(c, 10*time.Second)
+			expiration := time.Now().Add(-1 * pruningInterval * time.Hour)
+			_, cancel := context.WithTimeout(c, timeoutInterval*time.Second)
 			defer cancel()
 
+			var err error
 			tx, e := dh.DB.Begin(c)
 			if e != nil {
+				err = fmt.Errorf("failed to begin transaction: %w", e)
 				log.Error().
-					Err(e).
-					Msg("")
+					Err(err).
+					Msg("failed to begin transaction")
 
-				cancel()
+				continue
 			}
 
 			if e := idempotency.PruneIdempotencyKeys(c, tx, expiration); e != nil {
+				err = fmt.Errorf("failed to prune expired idempotency keys: %w", e)
 				log.Error().
-					Err(e).
+					Err(err).
 					Msg("")
 
-				cancel()
+				tx.Rollback(c)
+				continue
 			}
 
-			tx.Commit(c)
+			if e := tx.Commit(c); e != nil {
+				err = fmt.Errorf("failed to commit transaction: %w", e)
+				log.Error().
+					Err(err).
+					Msg("")
+			}
+		case <-c.Done():
+			return
 		}
 	}
 }

@@ -106,6 +106,7 @@ func main() {
 
 	// initialize newsletter delivery workers
 	go workers.WorkerLoop(parentContext, dh, client)
+	go workers.KeyPruningLoop(parentContext, dh)
 
 	router, listener, e := initializeServer(dh)
 	if e != nil {
