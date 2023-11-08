@@ -1,6 +1,6 @@
 # Hyacinth
 
-Hyacinth is a cloud-native, enterprise-level newsletter service built in Go, integrating PostgreSQL as a database and Redis for caching and session support. The service is designed to be secure, scalable, and highly customizable.
+Hyacinth is a cloud-native, enterprise-level newsletter service built in Go utilizing Gin routing, PostgreSQL as a database, and Redis for caching/session support. The service is designed to be secure, scalable, and highly customizable.
 
 ## Table of Contents
 
