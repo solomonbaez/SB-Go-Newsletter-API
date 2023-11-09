@@ -23,15 +23,26 @@ func DeliveryWorker(c context.Context, dh *handlers.DatabaseHandler, client *cli
 	resultChan := make(chan ExecutionOutcome)
 
 	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
 		for {
-			resultChan <- TryExecuteTask(c, dh, client)
+			select {
+			case <-c.Done():
+				log.Info().
+					Msg("worker exit")
+				return
+			case <-ticker.C:
+				resultChan <- TryExecuteTask(c, dh, client)
+			}
 		}
 	}()
+
 	for outcome := range resultChan {
 		switch outcome {
 		case ExecutionOutcomeEmptyQueue:
 			log.Info().
-				Msg("Empty queue")
+				Msg("Empty queue" + time.Now().String())
 			time.Sleep(10 * time.Second)
 		case ExecutionOutcomeError:
 			log.Error().

@@ -19,64 +19,59 @@ type Task struct {
 
 // TODO implement n_retries + execute_after columns to issue_delivery_queue to attempt retries
 func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) ExecutionOutcome {
-	resultChan := make(chan ExecutionOutcome)
-	go func() {
-		defer close(resultChan)
+	task, tx, e := DequeTask(c, dh)
+	defer tx.Rollback(c)
+	if e != nil {
+		// tryChan <- ExecutionOutcomeEmptyQueue
+		return ExecutionOutcomeEmptyQueue
+	}
 
-		task, tx, e := DequeTask(c, dh)
+	// re-parse email to ensure data integrity
+	var newsletter models.Newsletter
+	newsletter.Recipient, e = models.ParseEmail(task.SubscriberEmail.String())
+	if e != nil {
+		// tryChan <- ExecutionOutcomeError
+		return ExecutionOutcomeError
+	}
+
+	// TODO add confirmation email logic
+	newsletter.Content, e = GetIssue(c, tx, task.NewsletterIssueID)
+	if e != nil {
+		// tryChan <- ExecutionOutcomeError
+		return ExecutionOutcomeError
+	}
+	// base confirmation email == 0 -> it may be obtuse for this to be hardcoded
+	if task.NewsletterIssueID == "00000000-0000-0000-0000-000000000000" {
+		link, e := handlers.GenerateConfirmationLink(c, tx, &newsletter.Recipient)
 		if e != nil {
-			resultChan <- ExecutionOutcomeEmptyQueue
-			return
+			// tryChan <- ExecutionOutcomeError
+			return ExecutionOutcomeError
 		}
 
-		// re-parse email to ensure data integrity
-		var newsletter models.Newsletter
-		newsletter.Recipient, e = models.ParseEmail(task.SubscriberEmail.String())
-		if e != nil {
-			resultChan <- ExecutionOutcomeError
-			return
-		}
+		// replace placeholders with new link
+		newsletter.Content.Text = strings.Replace(newsletter.Content.Text, "{{.link}}", link, 1)
+		newsletter.Content.Html = strings.Replace(newsletter.Content.Html, "{{.link}}", link, 1)
+	}
 
-		// TODO add confirmation email logic
-		newsletter.Content, e = GetIssue(c, tx, task.NewsletterIssueID)
-		if e != nil {
-			resultChan <- ExecutionOutcomeError
-			return
-		}
-		// base confirmation email == 0 -> it may be obtuse for this to be hardcoded
-		if task.NewsletterIssueID == "00000000-0000-0000-0000-000000000000" {
-			link, e := handlers.GenerateConfirmationLink(c, tx, &newsletter.Recipient)
-			if e != nil {
-				resultChan <- ExecutionOutcomeError
-				return
-			}
+	if e = models.ParseNewsletter(&newsletter); e != nil {
+		// tryChan <- ExecutionOutcomeError
+		return ExecutionOutcomeError
+	}
+	if e = client.SendEmail(&newsletter); e != nil {
+		// tryChan <- ExecutionOutcomeError
+		return ExecutionOutcomeError
+	}
 
-			// replace placeholders with new link
-			newsletter.Content.Text = strings.Replace(newsletter.Content.Text, "{{.link}}", link, 1)
-			newsletter.Content.Html = strings.Replace(newsletter.Content.Html, "{{.link}}", link, 1)
-		}
+	if e = DeleteTask(c, tx, task); e != nil {
+		// tryChan <- ExecutionOutcomeError
+		return ExecutionOutcomeError
+	}
 
-		if e = models.ParseNewsletter(&newsletter); e != nil {
-			resultChan <- ExecutionOutcomeError
-			return
-		}
-		if e = client.SendEmail(&newsletter); e != nil {
-			resultChan <- ExecutionOutcomeError
-			return
-		}
+	log.Info().
+		Str("subscriber", task.SubscriberEmail.String()).
+		Msg("Email sent")
 
-		if e = DeleteTask(c, tx, task); e != nil {
-			resultChan <- ExecutionOutcomeError
-			return
-		}
-
-		log.Info().
-			Str("subscriber", task.SubscriberEmail.String()).
-			Msg("Email sent")
-
-		resultChan <- ExecutionOutcomeTaskCompleted
-	}()
-	return <-resultChan
+	return ExecutionOutcomeTaskCompleted
 }
 
 func DequeTask(c context.Context, dh *handlers.DatabaseHandler) (task *Task, tx pgx.Tx, err error) {
@@ -126,7 +121,11 @@ func DeleteTask(c context.Context, tx pgx.Tx, task *Task) (err error) {
 		return
 	}
 
-	tx.Commit(c)
+	e = tx.Commit(c)
+	if e != nil {
+		err = fmt.Errorf("Failed to commit delete task")
+		return
+	}
 	return
 }
 
@@ -144,7 +143,11 @@ func EnqueDeliveryTasks(c context.Context, tx pgx.Tx, newsletterIssueId string) 
 		return
 	}
 
-	tx.Commit(c)
+	e = tx.Commit(c)
+	if e != nil {
+		err = fmt.Errorf("Failed to commit delivery task")
+		return
+	}
 	return
 }
 

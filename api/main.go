@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"path/filepath"
+	// "sync"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -104,9 +106,16 @@ func main() {
 	// initialize server components
 	dh := handlers.NewDatabaseHandler(pool)
 
-	// initialize newsletter delivery workers
+	// var wg sync.WaitGroup
+	// // initialize newsletter delivery workers
+	// wg.Add(1)
+	// go func() {
+	// 	defer wg.Done()
+	// }()
+	// wg.Wait()
+	// go workers.PruningWorker(parentContext, dh)
+
 	go workers.DeliveryWorker(parentContext, dh, client)
-	go workers.PruningWorker(parentContext, dh)
 
 	router, listener, e := initializeServer(dh)
 	if e != nil {
@@ -136,6 +145,10 @@ func main() {
 
 		return
 	}
+	go func() {
+		fmt.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 }
 
 func initializeTracing() (err error) {
@@ -232,6 +245,7 @@ func initializeServer(dh *handlers.DatabaseHandler) (router *gin.Engine, listene
 	admin.GET("/newsletter", adminRoutes.GetNewsletter)
 	admin.POST("/newsletter", func(c *gin.Context) { adminRoutes.PostNewsletter(c, dh, client) })
 
+	router.GET("/debug/pprof/:id", gin.WrapH(http.DefaultServeMux))
 	router.GET("/health", handlers.HealthCheck)
 	router.GET("/login", routes.GetLogin)
 	router.POST("/login", func(c *gin.Context) { routes.PostLogin(c, dh) })

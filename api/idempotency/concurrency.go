@@ -38,7 +38,7 @@ func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key stri
 		return
 	}
 
-	query = "INSERT INTO idempotency_headers (idempotency_key) VALUES ($1)"
+	query = "INSERT INTO idempotency_headers (idempotency_key, created) VALUES ($1, now())"
 	headerRows, e := tx.Exec(c, query, key)
 	if e != nil {
 		e = fmt.Errorf("failed to insert idempotency header log: %w", e)
