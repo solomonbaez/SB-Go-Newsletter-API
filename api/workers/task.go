@@ -123,7 +123,7 @@ func DeleteTask(c context.Context, tx pgx.Tx, task *Task) (err error) {
 
 	e = tx.Commit(c)
 	if e != nil {
-		err = fmt.Errorf("Failed to commit delete task")
+		err = fmt.Errorf("failed to commit delete task")
 		return
 	}
 	return
@@ -145,7 +145,7 @@ func EnqueDeliveryTasks(c context.Context, tx pgx.Tx, newsletterIssueId string) 
 
 	e = tx.Commit(c)
 	if e != nil {
-		err = fmt.Errorf("Failed to commit delivery task")
+		err = fmt.Errorf("failed to commit delivery task")
 		return
 	}
 	return

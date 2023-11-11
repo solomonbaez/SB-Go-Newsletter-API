@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
 	"path/filepath"
 	// "sync"
 	"time"
@@ -144,10 +143,6 @@ func main() {
 
 		return
 	}
-	go func() {
-		fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
 }
 
 func initializeTracing() (err error) {
