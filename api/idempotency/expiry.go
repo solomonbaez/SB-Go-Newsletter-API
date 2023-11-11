@@ -95,3 +95,40 @@ func PruneIdempotencyKeys(c context.Context, dh *handlers.DatabaseHandler, expir
 
 	return
 }
+
+func PruneUnconfirmedSubscribers(c context.Context, dh *handlers.DatabaseHandler, expiration time.Time) (err error) {
+	tx, e := dh.DB.Begin(c)
+	defer tx.Rollback(c)
+
+	if e != nil {
+		err = fmt.Errorf("failed to begin transaction: %w", e)
+		log.Error().
+			Err(err).
+			Msg("failed to begin transaction")
+
+		return
+	}
+
+	query := "DELETE FROM subscriptions WHERE created <= $1"
+	_, e = tx.Exec(c, query, expiration)
+	if e != nil {
+		err = fmt.Errorf("failed to prune expired unconfirmed subscribers: %w", e)
+		log.Error().
+			Err(err).
+			Msg("")
+
+		return
+	}
+
+	if e := tx.Commit(c); e != nil {
+		err = fmt.Errorf("failed to commit transaction: %w", e)
+		log.Error().
+			Err(err).
+			Msg("")
+	}
+
+	log.Info().
+		Msg("Successfully pruned unconfirmed subscribers")
+
+	return
+}
