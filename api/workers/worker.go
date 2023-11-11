@@ -55,21 +55,41 @@ func DeliveryWorker(c context.Context, dh *handlers.DatabaseHandler, client *cli
 	}
 }
 
-const pruningInterval = 12
-const timeoutInterval = 10
+const idempotencyPruningInterval = 12
+const idempotencyTimeoutInterval = 10
+
+// 1 week
+const subscriberPruningInterval = 168
+const subscriberTimeoutInterval = 10
 
 func PruningWorker(c context.Context, dh *handlers.DatabaseHandler) {
-	ticker := time.NewTicker(pruningInterval * time.Hour)
-	defer ticker.Stop()
+	idempotencyTicker := time.NewTicker(idempotencyPruningInterval * time.Hour)
+	defer idempotencyTicker.Stop()
+
+	subscriberTicker := time.NewTicker(subscriberPruningInterval * time.Hour)
+	defer subscriberTicker.Stop()
 
 	for {
 		select {
-		case <-ticker.C:
-			expiration := time.Now().Add(-1 * pruningInterval * time.Hour)
-			_, cancel := context.WithTimeout(c, timeoutInterval*time.Second)
+		case <-idempotencyTicker.C:
+			expiration := time.Now().Add(-1 * idempotencyPruningInterval * time.Hour)
+			_, cancel := context.WithTimeout(c, idempotencyTimeoutInterval*time.Second)
 			defer cancel()
 
 			if e := idempotency.PruneIdempotencyKeys(c, dh, expiration); e != nil {
+				err := fmt.Errorf("failed to prune expired idempotency keys: %w", e)
+				log.Error().
+					Err(err).
+					Msg("")
+
+				continue
+			}
+		case <-subscriberTicker.C:
+			expiration := time.Now().Add(-1 * subscriberPruningInterval * time.Hour)
+			_, cancel := context.WithTimeout(c, subscriberTimeoutInterval*time.Minute)
+			defer cancel()
+
+			if e := idempotency.PruneUnconfirmedSubscribers(c, dh, expiration); e != nil {
 				err := fmt.Errorf("failed to prune expired idempotency keys: %w", e)
 				log.Error().
 					Err(err).
