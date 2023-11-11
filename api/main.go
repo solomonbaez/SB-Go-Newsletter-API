@@ -113,8 +113,7 @@ func main() {
 	// 	defer wg.Done()
 	// }()
 	// wg.Wait()
-	// go workers.PruningWorker(parentContext, dh)
-
+	go workers.PruningWorker(parentContext, dh)
 	go workers.DeliveryWorker(parentContext, dh, client)
 
 	router, listener, e := initializeServer(dh)

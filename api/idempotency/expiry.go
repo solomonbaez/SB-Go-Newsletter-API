@@ -50,6 +50,8 @@ func DeleteIdempotencyKey(c *gin.Context, tx pgx.Tx, key IdempotencyKey) (err er
 // Implemented as a general purpose database sweep
 func PruneIdempotencyKeys(c context.Context, dh *handlers.DatabaseHandler, expiration time.Time) (err error) {
 	tx, e := dh.DB.Begin(c)
+	defer tx.Rollback(c)
+
 	if e != nil {
 		err = fmt.Errorf("failed to begin transaction: %w", e)
 		log.Error().
