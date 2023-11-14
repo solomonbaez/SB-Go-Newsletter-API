@@ -105,13 +105,6 @@ func main() {
 	// initialize server components
 	dh := handlers.NewDatabaseHandler(pool)
 
-	// var wg sync.WaitGroup
-	// // initialize newsletter delivery workers
-	// wg.Add(1)
-	// go func() {
-	// 	defer wg.Done()
-	// }()
-	// wg.Wait()
 	go workers.PruningWorker(parentContext, dh)
 	go workers.DeliveryWorker(parentContext, dh, client)
 

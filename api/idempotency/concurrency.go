@@ -21,6 +21,7 @@ func TryProcessing(c context.Context, dh *handlers.DatabaseHandler, id, key stri
 	next = &NextAction{StartProcessing: nil, SavedResponse: nil}
 
 	tx, e := dh.DB.Begin(c)
+	defer tx.Rollback(c)
 	if e != nil {
 		err = fmt.Errorf("failed to begin transaction: %w", e)
 		return
