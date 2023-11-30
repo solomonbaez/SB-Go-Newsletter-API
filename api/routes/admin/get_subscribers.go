@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+	"github.com/solomonbaez/hyacinth/api/handlers"
+	"github.com/solomonbaez/hyacinth/api/models"
 )
 
 func GetSubscribers(c *gin.Context, dh *handlers.DatabaseHandler) {

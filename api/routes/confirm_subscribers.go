@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
+	"github.com/solomonbaez/hyacinth/api/handlers"
 )
 
 func ConfirmSubscriber(c *gin.Context, dh *handlers.DatabaseHandler) {

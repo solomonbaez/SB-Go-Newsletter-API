@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/pashagolub/pgxmock/v3"
-	utils "github.com/solomonbaez/SB-Go-Newsletter-API/test_utils"
+	utils "github.com/solomonbaez/hyacinth/test_utils"
 )
 
 func TestGetSavedResponse(t *testing.T) {

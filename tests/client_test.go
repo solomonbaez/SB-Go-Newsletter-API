@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	mock "github.com/mocktools/go-smtp-mock"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+	"github.com/solomonbaez/hyacinth/api/clients"
+	"github.com/solomonbaez/hyacinth/api/models"
 )
 
 var mockClient = &clients.SMTPClient{}

@@ -9,8 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+	"github.com/solomonbaez/hyacinth/api/handlers"
+	"github.com/solomonbaez/hyacinth/api/models"
 )
 
 // TODO Sanitize credentials again?

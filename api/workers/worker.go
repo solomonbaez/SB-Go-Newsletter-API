@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/idempotency"
+	"github.com/solomonbaez/hyacinth/api/clients"
+	"github.com/solomonbaez/hyacinth/api/handlers"
+	"github.com/solomonbaez/hyacinth/api/idempotency"
 )
 
 type ExecutionOutcome int

@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
+	"github.com/solomonbaez/hyacinth/api/handlers"
 )
 
 // Implemented as a general purpose database sweep

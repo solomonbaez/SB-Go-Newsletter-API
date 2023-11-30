@@ -11,11 +11,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/idempotency"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/workers"
+	"github.com/solomonbaez/hyacinth/api/clients"
+	"github.com/solomonbaez/hyacinth/api/handlers"
+	"github.com/solomonbaez/hyacinth/api/idempotency"
+	"github.com/solomonbaez/hyacinth/api/models"
+	"github.com/solomonbaez/hyacinth/api/workers"
 )
 
 func InsertNewsletter(c *gin.Context, tx pgx.Tx, content *models.Body) (id *string, err error) {

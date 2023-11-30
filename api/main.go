@@ -25,12 +25,12 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/semconv/v1.18.0"
 
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
-	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/workers"
+	"github.com/solomonbaez/hyacinth/api/clients"
+	"github.com/solomonbaez/hyacinth/api/configs"
+	"github.com/solomonbaez/hyacinth/api/handlers"
+	"github.com/solomonbaez/hyacinth/api/routes"
+	adminRoutes "github.com/solomonbaez/hyacinth/api/routes/admin"
+	"github.com/solomonbaez/hyacinth/api/workers"
 )
 
 type App struct {

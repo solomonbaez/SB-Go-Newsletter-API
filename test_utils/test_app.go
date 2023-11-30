@@ -9,8 +9,8 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/pashagolub/pgxmock/v3"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/clients"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
+	"github.com/solomonbaez/hyacinth/api/clients"
+	"github.com/solomonbaez/hyacinth/api/handlers"
 )
 
 type App struct {

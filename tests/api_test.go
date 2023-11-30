@@ -13,11 +13,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v3"
 
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/routes"
-	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
-	utils "github.com/solomonbaez/SB-Go-Newsletter-API/test_utils"
+	"github.com/solomonbaez/hyacinth/api/handlers"
+	"github.com/solomonbaez/hyacinth/api/models"
+	"github.com/solomonbaez/hyacinth/api/routes"
+	adminRoutes "github.com/solomonbaez/hyacinth/api/routes/admin"
+	utils "github.com/solomonbaez/hyacinth/test_utils"
 )
 
 func TestHealthCheck(t *testing.T) {

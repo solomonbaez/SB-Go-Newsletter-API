@@ -9,9 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pashagolub/pgxmock/v3"
 
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
-	adminRoutes "github.com/solomonbaez/SB-Go-Newsletter-API/api/routes/admin"
-	utils "github.com/solomonbaez/SB-Go-Newsletter-API/test_utils"
+	"github.com/solomonbaez/hyacinth/api/models"
+	adminRoutes "github.com/solomonbaez/hyacinth/api/routes/admin"
+	utils "github.com/solomonbaez/hyacinth/test_utils"
 )
 
 func TestPostNewsletter(t *testing.T) {

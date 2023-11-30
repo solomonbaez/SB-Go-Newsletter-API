@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/go-gomail/gomail"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/configs"
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+	"github.com/solomonbaez/hyacinth/api/configs"
+	"github.com/solomonbaez/hyacinth/api/models"
 )
 
 type EmailClient interface {

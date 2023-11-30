@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/models"
+	"github.com/solomonbaez/hyacinth/api/models"
 )
 
 func TestParseEmail(t *testing.T) {

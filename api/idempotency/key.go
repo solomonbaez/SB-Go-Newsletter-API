@@ -3,7 +3,7 @@ package idempotency
 import (
 	"fmt"
 
-	"github.com/solomonbaez/SB-Go-Newsletter-API/api/handlers"
+	"github.com/solomonbaez/hyacinth/api/handlers"
 )
 
 const keyLen = 25
