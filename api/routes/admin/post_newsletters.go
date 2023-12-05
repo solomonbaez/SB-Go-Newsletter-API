@@ -19,8 +19,13 @@ import (
 )
 
 func InsertNewsletter(c *gin.Context, tx pgx.Tx, content *models.Body) (id *string, err error) {
-	issueID := uuid.NewString()
+	defer func() {
+		if err != nil {
+			tx.Rollback(c)
+		}
+	}()
 
+	issueID := uuid.NewString()
 	query := `INSERT INTO newsletter_issues (
 				newsletter_issue_id, 
 				title, 

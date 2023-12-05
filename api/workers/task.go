@@ -18,9 +18,16 @@ type Task struct {
 }
 
 // TODO implement n_retries + execute_after columns to issue_delivery_queue to attempt retries
+
+// TODO fix error handling, err is the idiomatic syntax per my codebase
 func TryExecuteTask(c context.Context, dh *handlers.DatabaseHandler, client *clients.SMTPClient) ExecutionOutcome {
 	task, tx, e := DequeTask(c, dh)
-	defer tx.Rollback(c)
+	defer func() {
+		if e != nil {
+			tx.Rollback(c)
+		}
+	}()
+
 	if e != nil {
 		// tryChan <- ExecutionOutcomeEmptyQueue
 		return ExecutionOutcomeEmptyQueue

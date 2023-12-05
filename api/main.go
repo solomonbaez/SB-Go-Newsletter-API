@@ -74,7 +74,7 @@ func init() {
 	}
 }
 
-var enableTracing = true
+var enableTracing = false
 var pool *pgxpool.Pool
 
 func main() {
@@ -183,7 +183,7 @@ func initializeServer(dh *handlers.DatabaseHandler) (router *gin.Engine, listene
 	if enableTracing {
 		router.Use(TraceMiddleware())
 	}
-	router.Use(CSPMiddleware())
+	// router.Use(CSPMiddleware())
 	router.Use(SecurityHeadersMiddleware())
 
 	key1, e := handlers.GenerateCSPRNG(32)
