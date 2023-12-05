@@ -3,6 +3,7 @@ package blog
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -52,7 +53,10 @@ func GetNewlsetterIssueByTitle(c *gin.Context, dh *handlers.DatabaseHandler) {
 	newsletter.Content = &models.Body{}
 
 	requestID := c.GetString("requestID")
-	title := c.Param("title")
+	rawTitle := c.Param("title")
+
+	var title string
+	title = strings.Replace(rawTitle, "-", " ", -1)
 
 	log.Info().
 		Str("requestID", requestID).
