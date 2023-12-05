@@ -12,9 +12,9 @@ type Newsletter struct {
 }
 
 type Body struct {
-	Title string `json:"title"`
-	Text  string `json:"text"`
-	Html  string `json:"html"`
+	Title string `json:"title" binding:"required"`
+	Text  string `json:"text" binding:"required"`
+	Html  string `json:"html" binding:"required"`
 }
 
 func ParseNewsletter(newsletter interface{}) (err error) {

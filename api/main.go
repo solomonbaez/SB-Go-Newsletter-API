@@ -25,6 +25,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/semconv/v1.18.0"
 
+	"github.com/solomonbaez/hyacinth/api/blog"
 	"github.com/solomonbaez/hyacinth/api/clients"
 	"github.com/solomonbaez/hyacinth/api/configs"
 	"github.com/solomonbaez/hyacinth/api/handlers"
@@ -231,6 +232,8 @@ func initializeServer(dh *handlers.DatabaseHandler) (router *gin.Engine, listene
 	admin.GET("/subscribers/:id", func(c *gin.Context) { adminRoutes.GetSubscriberByID(c, dh) })
 	admin.GET("/newsletter", adminRoutes.GetNewsletter)
 	admin.POST("/newsletter", func(c *gin.Context) { adminRoutes.PostNewsletter(c, dh, client) })
+	admin.GET("/issues", func(c *gin.Context) { blog.GetNewlsetterIssues(c, dh) })
+	admin.GET("/issues/:title", func(c *gin.Context) { blog.GetNewlsetterIssueByTitle(c, dh) })
 
 	router.GET("/debug/pprof/:id", gin.WrapH(http.DefaultServeMux))
 	router.GET("/health", handlers.HealthCheck)
