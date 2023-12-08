@@ -54,19 +54,40 @@ func GetNewlsetterIssueByTitle(c *gin.Context, dh *handlers.DatabaseHandler) {
 
 	requestID := c.GetString("requestID")
 	rawTitle := c.Param("title")
-
-	var title string
-	title = strings.Replace(rawTitle, "-", " ", -1)
+	title := strings.Replace(rawTitle, "-", " ", -1)
 
 	log.Info().
 		Str("requestID", requestID).
 		Msg("Fetching newsletter issues...")
 
-	var response string
 	e := dh.DB.QueryRow(c, "SELECT title, text_content, html_content FROM newsletter_issues WHERE title=$1", title).
 		Scan(&newsletter.Content.Title, &newsletter.Content.Text, &newsletter.Content.Html)
 	if e != nil {
-		response = "Failed to fetch newsletter"
+		response := "Failed to fetch newsletter"
+		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"requestID": requestID, "newsletter": newsletter})
+}
+
+func GetLatestNewsletterIssue(c *gin.Context, dh *handlers.DatabaseHandler) {
+	var newsletter = models.Newsletter{}
+	newsletter.Content = &models.Body{}
+
+	requestID := c.GetString("requestID")
+
+	log.Info().
+		Str("requestID", requestID).
+		Msg("Fetching newsletter issues...")
+
+	query := `SELECT title, text_content, html_content
+            FROM newsletter_issues
+            ORDER BY published_at DESC LIMIT 1`
+	e := dh.DB.QueryRow(c, query).
+		Scan(&newsletter.Content.Title, &newsletter.Content.Text, &newsletter.Content.Html)
+	if e != nil {
+		response := "Failed to fetch newsletter"
 		handlers.HandleError(c, requestID, e, response, http.StatusInternalServerError)
 		return
 	}
